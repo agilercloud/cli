@@ -12,6 +12,14 @@ Command-line interface for [Agiler](https://agiler.io) — manage projects, file
 brew install agilercloud/tap/agiler
 ```
 
+**Install script (macOS/Linux):**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/agilercloud/cli/main/install.sh | sh
+```
+
+Installs the latest release to `~/.local/bin/agiler`. Override with `AGILER_VERSION=v0.1.2` or `AGILER_INSTALL_DIR=/usr/local/bin` (prefix the env vars before the pipeline, e.g. `curl ... | AGILER_VERSION=v0.1.2 sh`). Script verifies the SHA-256 checksum before installing.
+
 **From source:**
 
 ```sh
