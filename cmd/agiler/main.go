@@ -28,6 +28,8 @@ var rootCmd = &cobra.Command{
 	Short: "Agiler CLI — manage your Agiler projects from the terminal",
 	Long:  "Agiler CLI allows you to manage projects, files, backups, and more using an API key.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		backgroundUpdateCheck(cmd.Name())
+
 		// skip client setup for commands that don't need it
 		switch cmd.Name() {
 		case "version", "help", "upgrade":
