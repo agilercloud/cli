@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// skip client setup for commands that don't need it
 		switch cmd.Name() {
-		case "version", "help":
+		case "version", "help", "upgrade":
 			return
 		}
 		if cmd.Parent() != nil && cmd.Parent().Name() == "config" {
@@ -69,6 +69,7 @@ func init() {
 	rootCmd.AddCommand(regionsCmd)
 	rootCmd.AddCommand(rulesCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(upgradeCmd)
 }
 
 var versionCmd = &cobra.Command{

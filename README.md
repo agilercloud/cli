@@ -28,6 +28,17 @@ go install github.com/agilercloud/cli/cmd/agiler@latest
 
 **Binary downloads:** see [Releases](https://github.com/agilercloud/cli/releases).
 
+## Upgrading
+
+```sh
+agiler upgrade              # install the latest release
+agiler upgrade --check      # report current vs. latest, no changes
+agiler upgrade --version v0.1.2   # install a specific tag (supports downgrade)
+agiler upgrade --force      # override refusals (dev build, non-canonical path, same version)
+```
+
+`agiler upgrade` only self-updates installs it can safely manage (the `install.sh` / manual-download path). For installs from Homebrew or `go install`, it prints the correct native upgrade command instead. The command hits the GitHub Releases API directly and verifies the SHA-256 of the downloaded archive before replacing the binary. Set `GITHUB_TOKEN` if you hit the unauthenticated rate limit (60 requests/hour per IP).
+
 ## Quickstart
 
 ```sh
@@ -73,6 +84,7 @@ agiler projects usage      Project resource usage
 agiler runtimes            List available runtimes
 agiler regions             List available regions
 agiler rules               Rule templates
+agiler upgrade             Upgrade this CLI to the latest release
 ```
 
 Run `agiler <command> --help` for details on any subcommand.
