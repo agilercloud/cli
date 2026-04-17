@@ -2,6 +2,8 @@
 
 Command-line interface for [Agiler](https://agiler.io) — manage projects, files, backups, domains, and more from the terminal.
 
+> **Status: pre-1.0, unstable.** This CLI is in active development. Expect rough edges, incomplete coverage of the API, and breaking changes between releases without deprecation windows. Pin a specific version if you need stability, and report issues on the [tracker](https://github.com/agilercloud/cli/issues). Not yet recommended for production automation.
+
 ## Install
 
 **Homebrew (macOS/Linux):**
