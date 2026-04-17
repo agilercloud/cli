@@ -9,7 +9,7 @@ before:
 builds:
   - id: agiler
     binary: agiler
-    main: .
+    main: ./cmd/agiler
     env:
       - CGO_ENABLED=0
     flags:

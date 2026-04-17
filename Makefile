@@ -3,7 +3,7 @@ VERSION = $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 .PHONY: build test vet tidy release-dry clean
 
 build:
-	go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o agiler .
+	go build -trimpath -ldflags "-s -w -X main.Version=$(VERSION)" -o agiler ./cmd/agiler
 
 test:
 	go test ./...

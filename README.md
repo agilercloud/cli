@@ -13,10 +13,8 @@ brew install agilercloud/tap/agiler
 **From source:**
 
 ```sh
-go install github.com/agilercloud/cli@latest
+go install github.com/agilercloud/cli/cmd/agiler@latest
 ```
-
-The binary produced by `go install` is named `cli`. Rename or symlink it as `agiler` if you prefer.
 
 **Binary downloads:** see [Releases](https://github.com/agilercloud/cli/releases).
 
