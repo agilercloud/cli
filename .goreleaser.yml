@@ -53,22 +53,21 @@ changelog:
       - "Merge pull request"
       - "Merge branch"
 
-brews:
+homebrew_casks:
   - name: agiler
+    directory: Casks
+    binaries:
+      - agiler
     repository:
       owner: agilercloud
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: "https://agiler.io"
     description: "Command-line interface for Agiler."
-    license: "MIT"
     commit_author:
       name: agilerbot
       email: hello@agiler.io
-    install: |
-      bin.install "agiler"
-    test: |
-      system "#{bin}/agiler version"
+    commit_msg_template: "agiler {{ .Tag }}"
 
 release:
   github:
