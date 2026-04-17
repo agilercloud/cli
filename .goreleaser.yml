@@ -68,6 +68,12 @@ homebrew_casks:
       name: agilerbot
       email: hello@agiler.io
     commit_msg_template: "agiler {{ .Tag }}"
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agiler"]
+          end
 
 release:
   github:
