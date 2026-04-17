@@ -1,0 +1,79 @@
+version: 2
+
+project_name: agiler
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: agiler
+    binary: agiler
+    main: .
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: agiler
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}darwin
+      {{- else if eq .Os "linux" }}linux
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "arm64" }}arm64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+brews:
+  - name: agiler
+    repository:
+      owner: agilercloud
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://agiler.io"
+    description: "Command-line interface for Agiler."
+    license: "MIT"
+    commit_author:
+      name: agilerbot
+      email: hello@agiler.io
+    install: |
+      bin.install "agiler"
+    test: |
+      system "#{bin}/agiler version"
+
+release:
+  github:
+    owner: agilercloud
+    name: cli
+  draft: false
+  prerelease: auto
+  name_template: "v{{ .Version }}"
