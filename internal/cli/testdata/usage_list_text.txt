@@ -1,0 +1,2 @@
+DATE        REQUESTS  2XX  4XX  5XX  AVG DURATION  DATA OUT (MB)
+2025-01-01  100       90   5    5    12.3          0.5

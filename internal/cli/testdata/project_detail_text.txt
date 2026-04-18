@@ -1,0 +1,12 @@
+ID:        p1
+Name:      alpha
+Status:    running
+Active:    true
+Region:    eu
+Runtime:   node22
+Instance:  1
+Created:   2025-01-01
+Updated:   2025-02-01
+
+Domains:
+  example.com (d1)

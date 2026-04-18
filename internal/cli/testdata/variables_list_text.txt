@@ -1,0 +1,3 @@
+ID  NAME          SECRET  VALUE
+v1  DATABASE_URL  true    (hidden)
+v2  PORT          false   3000

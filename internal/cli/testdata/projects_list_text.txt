@@ -1,0 +1,3 @@
+ID  NAME          STATUS   REGION  RUNTIME
+p1  alpha         running  eu      node22
+p2  beta-service  stopped  us      python312
