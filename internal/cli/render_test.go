@@ -100,8 +100,8 @@ func TestRenderFilesList(t *testing.T) {
 func TestRenderVariablesList(t *testing.T) {
 	v := "3000"
 	data := []api.Variable{
-		{ID: "v1", Name: "DATABASE_URL", Secret: true, Value: nil},
-		{ID: "v2", Name: "PORT", Secret: false, Value: &v},
+		{ID: "v1", Name: "DATABASE_URL", Sensitive: true, Value: nil},
+		{ID: "v2", Name: "PORT", Sensitive: false, Value: &v},
 	}
 	assertRender(t, "variables_list_text.txt",
 		func(w *output.Writer) { renderVariablesList(w, data) }, output.ModeText)

@@ -66,10 +66,10 @@ type Runtime struct {
 
 // Variable is one env var attached to a project.
 type Variable struct {
-	ID     string  `json:"id"`
-	Name   string  `json:"name"`
-	Secret bool    `json:"secret"`
-	Value  *string `json:"value"`
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Sensitive bool    `json:"sensitive"`
+	Value     *string `json:"value"`
 }
 
 // Domain is a custom domain attached to a project.

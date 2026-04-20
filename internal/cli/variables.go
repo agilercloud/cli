@@ -36,11 +36,11 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 		Short: "Set an environment variable",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			secret, _ := cmd.Flags().GetBool("secret")
+			sensitive, _ := cmd.Flags().GetBool("sensitive")
 			body := map[string]any{
-				"name":   args[1],
-				"value":  args[2],
-				"secret": secret,
+				"name":      args[1],
+				"value":     args[2],
+				"sensitive": sensitive,
 			}
 			data, _ := json.Marshal(body)
 
@@ -51,7 +51,7 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 			return nil
 		},
 	}
-	setCmd.Flags().Bool("secret", false, "Mark variable as secret")
+	setCmd.Flags().Bool("sensitive", false, "Mark variable as sensitive")
 	cmd.AddCommand(setCmd)
 
 	cmd.AddCommand(&cobra.Command{
@@ -85,7 +85,7 @@ func renderVariablesList(w *output.Writer, vars []api.Variable) {
 		if v.Value != nil {
 			value = *v.Value
 		}
-		rows[i] = []string{v.ID, v.Name, fmt.Sprintf("%t", v.Secret), value}
+		rows[i] = []string{v.ID, v.Name, fmt.Sprintf("%t", v.Sensitive), value}
 	}
-	w.Table([]string{"ID", "NAME", "SECRET", "VALUE"}, rows)
+	w.Table([]string{"ID", "NAME", "SENSITIVE", "VALUE"}, rows)
 }
