@@ -114,13 +114,13 @@ func TestDoRawCustomHeaders(t *testing.T) {
 	var gotBody []byte
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		gotCT = r.Header.Get("Content-Type")
-		gotCustom = r.Header.Get("X-Modified-At")
+		gotCustom = r.Header.Get("X-Test-Header")
 		gotBody, _ = io.ReadAll(r.Body)
 		w.WriteHeader(http.StatusOK)
 	})
 
 	body := strings.NewReader("binary-data")
-	headers := map[string]string{"X-Modified-At": "12345"}
+	headers := map[string]string{"X-Test-Header": "value"}
 	resp, err := c.DoRaw(context.Background(), "PUT", "/f", "application/octet-stream", headers, body)
 	if err != nil {
 		t.Fatalf("DoRaw: %v", err)
@@ -130,8 +130,8 @@ func TestDoRawCustomHeaders(t *testing.T) {
 	if gotCT != "application/octet-stream" {
 		t.Errorf("Content-Type: %q", gotCT)
 	}
-	if gotCustom != "12345" {
-		t.Errorf("X-Modified-At: %q", gotCustom)
+	if gotCustom != "value" {
+		t.Errorf("X-Test-Header: %q", gotCustom)
 	}
 	if string(gotBody) != "binary-data" {
 		t.Errorf("body: %q", gotBody)

@@ -9,7 +9,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -105,7 +104,7 @@ func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remo
 
 	headers := map[string]string{}
 	if fi, err := f.Stat(); err == nil {
-		headers["X-Modified-At"] = strconv.FormatInt(fi.ModTime().Unix(), 10)
+		headers["Last-Modified"] = fi.ModTime().UTC().Format(http.TimeFormat)
 	}
 
 	p := "/v1/projects/" + projectID + "/files/" + encodeFilePath(remotePath)
