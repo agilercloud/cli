@@ -150,7 +150,7 @@ func TestErrorResponses(t *testing.T) {
 		{http.StatusTooManyRequests, `{}`, "rate limit"},
 		{http.StatusInternalServerError, `{}`, "unexpected server error"},
 		{http.StatusServiceUnavailable, `{}`, "service unavailable"},
-		{http.StatusBadRequest, `{"message":"bad project name"}`, "bad project name"},
+		{http.StatusBadRequest, `{"error":{"code":"validation_error","message":"bad project name"}}`, "bad project name"},
 	}
 	for _, tc := range cases {
 		t.Run(http.StatusText(tc.status), func(t *testing.T) {
@@ -182,7 +182,12 @@ func TestAPIErrorCustomMessageOverride(t *testing.T) {
 	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		_ = json.NewEncoder(w).Encode(map[string]string{"message": "project x not found"})
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"error": map[string]string{
+				"code":    "not_found",
+				"message": "project x not found",
+			},
+		})
 	})
 
 	err := c.DoJSON(context.Background(), "GET", "/x", nil, nil)
@@ -191,6 +196,38 @@ func TestAPIErrorCustomMessageOverride(t *testing.T) {
 	}
 	if err.Error() != "project x not found" {
 		t.Errorf("Error() = %q, want %q", err.Error(), "project x not found")
+	}
+}
+
+func TestAPIErrorFieldPrefix(t *testing.T) {
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"error": map[string]string{
+				"code":    "validation_error",
+				"message": "required",
+				"field":   "name",
+			},
+		})
+	})
+
+	err := c.DoJSON(context.Background(), "GET", "/x", nil, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T", err)
+	}
+	if apiErr.Code != "validation_error" {
+		t.Errorf("Code = %q, want %q", apiErr.Code, "validation_error")
+	}
+	if apiErr.Field != "name" {
+		t.Errorf("Field = %q, want %q", apiErr.Field, "name")
+	}
+	if err.Error() != "name: required" {
+		t.Errorf("Error() = %q, want %q", err.Error(), "name: required")
 	}
 }
 

@@ -146,10 +146,16 @@ func (c *Client) DoJSONIdempotent(ctx context.Context, method, path string, body
 func decodeAPIError(resp *http.Response) error {
 	apiErr := &APIError{StatusCode: resp.StatusCode}
 	var errBody struct {
-		Message string `json:"message"`
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+			Field   string `json:"field"`
+		} `json:"error"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&errBody); err == nil {
-		apiErr.Message = errBody.Message
+		apiErr.Code = errBody.Error.Code
+		apiErr.Message = errBody.Error.Message
+		apiErr.Field = errBody.Error.Field
 	}
 	return apiErr
 }
@@ -157,13 +163,17 @@ func decodeAPIError(resp *http.Response) error {
 // APIError represents an error response from the API.
 type APIError struct {
 	StatusCode int
+	Code       string
 	Message    string
+	Field      string
 }
 
 func (e *APIError) Error() string {
-	// If the API sent a custom message (not the default HTTP status text),
-	// use it directly — it's already descriptive.
+	// If the API sent a descriptive message, use it directly.
 	if e.Message != "" && e.Message != http.StatusText(e.StatusCode) {
+		if e.Field != "" {
+			return fmt.Sprintf("%s: %s", e.Field, e.Message)
+		}
 		return e.Message
 	}
 
