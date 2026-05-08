@@ -64,8 +64,8 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 }
 
 func renderDomainsList(w *output.Writer, domains []api.Domain) {
-	if w.IsJSON() {
-		w.JSON(domains)
+	if w.IsStructured() {
+		w.Structured(domains)
 		return
 	}
 	if len(domains) == 0 {

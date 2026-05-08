@@ -16,7 +16,7 @@ const Interval = 24 * time.Hour
 type Options struct {
 	CmdName     string
 	Version     string
-	OutputMuted bool // true when --json or --quiet is active
+	OutputMuted bool // true when --format is non-default or --quiet is active
 	Fetch       func(ctx context.Context) (latestTag string, err error)
 }
 

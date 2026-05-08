@@ -26,6 +26,9 @@ func newRulesCmd(a *app.App) *cobra.Command {
 			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/rules", nil, &result); err != nil {
 				return err
 			}
+			if a.Output.IsTabular() {
+				return tabularUnsupportedErr(a.Output)
+			}
 			a.Output.JSON(result)
 			return nil
 		},
@@ -51,11 +54,10 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 				return err
 			}
 
-			if a.Output.IsJSON() {
-				a.Output.JSON(result.Rules)
-				return nil
+			if a.Output.IsTabular() {
+				return tabularUnsupportedErr(a.Output)
 			}
-			if len(result.Rules) == 0 {
+			if len(result.Rules) == 0 && !a.Output.IsStructured() {
 				a.Output.Text("No rules configured.")
 				return nil
 			}

@@ -71,8 +71,8 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 }
 
 func renderVariablesList(w *output.Writer, vars []api.Variable) {
-	if w.IsJSON() {
-		w.JSON(vars)
+	if w.IsStructured() {
+		w.Structured(vars)
 		return
 	}
 	if len(vars) == 0 {

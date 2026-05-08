@@ -18,7 +18,7 @@ func Wire(version string) (*App, error) {
 		In:      os.Stdin,
 		Out:     os.Stdout,
 		Err:     os.Stderr,
-		Output:  output.New(output.ModeText, os.Stdout, os.Stderr),
+		Output:  output.New(output.FormatText, false, os.Stdout, os.Stderr),
 		FS:      fsx.OSFS{},
 		Clock:   clock.Real{},
 	}, nil

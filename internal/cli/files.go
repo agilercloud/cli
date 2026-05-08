@@ -420,15 +420,15 @@ func newFilesMoveCmd(a *app.App) *cobra.Command {
 }
 
 func renderFilesList(w *output.Writer, result []api.File) {
-	if w.IsJSON() {
-		w.JSON(result)
+	if w.IsStructured() {
+		w.Structured(result)
 		return
 	}
 	if len(result) == 0 {
 		w.Text("No files found.")
 		return
 	}
-	if w.IsQuiet() {
+	if w.Format == output.FormatText && w.IsQuiet() {
 		for _, f := range result {
 			w.Text("%s", f.Path)
 		}

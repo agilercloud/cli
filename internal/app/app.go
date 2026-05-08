@@ -28,7 +28,7 @@ type APIClient interface {
 //
 // API is assigned by PersistentPreRunE — commands that run before config
 // loads (version, help, upgrade, config subcommands) see a nil API.
-// Output is assigned from the --json / --quiet flag values in PersistentPreRunE.
+// Output is assigned from the --format / --quiet flag values in PersistentPreRunE.
 type App struct {
 	Version      string
 	API          APIClient
@@ -46,9 +46,10 @@ type App struct {
 	FlagAPIKey  string
 	FlagAPIBase string
 
-	// OutputJSON / OutputQuiet are the raw --json / --quiet flag values.
-	OutputJSON  bool
-	OutputQuiet bool
+	// OutputFormat is the raw --format flag value (parsed in initOutput);
+	// OutputQuiet is the raw --quiet flag value.
+	OutputFormat string
+	OutputQuiet  bool
 
 	In  io.Reader
 	Out io.Writer

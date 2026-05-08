@@ -40,6 +40,9 @@ func newSQLCmd(a *app.App) *cobra.Command {
 			if err := a.API.DoJSON(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/db/sql", args[0]), bytes.NewReader(data), &result); err != nil {
 				return err
 			}
+			if a.Output.IsTabular() {
+				return fmt.Errorf("sql results aren't tabular; use --format=json or --format=yaml")
+			}
 			a.Output.JSON(result)
 			return nil
 		},

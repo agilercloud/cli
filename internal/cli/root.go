@@ -22,12 +22,14 @@ func NewRootCmd(a *app.App) *cobra.Command {
 		Short: "Agiler CLI — manage your Agiler projects from the terminal",
 		Long:  "Agiler CLI allows you to manage projects, files, backups, and more using an API key.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			initOutput(a)
+			if err := initOutput(a); err != nil {
+				return err
+			}
 
 			updatecheck.Background(updatecheck.Options{
 				CmdName:     cmd.Name(),
 				Version:     a.Version,
-				OutputMuted: a.OutputJSON || a.OutputQuiet,
+				OutputMuted: a.Output.Format != output.FormatText || a.Output.Quiet,
 				Fetch: func(ctx context.Context) (string, error) {
 					rel, err := selfupdate.FetchRelease(ctx, "")
 					if err != nil {
@@ -69,7 +71,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.PersistentFlags().StringVarP(&a.FlagConfig, "config", "c", "", "Config file path")
 	root.PersistentFlags().StringVar(&a.FlagAPIKey, "api-key", "", "API key (overrides config and AGILER_API_KEY)")
 	root.PersistentFlags().StringVar(&a.FlagAPIBase, "api-base", "", "API base URL (overrides config and AGILER_API_BASE)")
-	root.PersistentFlags().BoolVar(&a.OutputJSON, "json", false, "Output raw JSON")
+	root.PersistentFlags().StringVar(&a.OutputFormat, "format", "", "Output format: text|json|yaml|csv|tsv (default text)")
 	root.PersistentFlags().BoolVarP(&a.OutputQuiet, "quiet", "q", false, "Minimal output (IDs only)")
 
 	root.AddCommand(newStatusCmd(a))
@@ -97,13 +99,15 @@ func Run(a *app.App, ctx context.Context, args []string) int {
 	return 0
 }
 
-func initOutput(a *app.App) {
-	mode := output.ModeText
-	switch {
-	case a.OutputJSON:
-		mode = output.ModeJSON
-	case a.OutputQuiet:
-		mode = output.ModeQuiet
+func initOutput(a *app.App) error {
+	format := output.FormatText
+	if a.OutputFormat != "" {
+		f, err := output.ParseFormat(a.OutputFormat)
+		if err != nil {
+			return err
+		}
+		format = f
 	}
-	a.Output = output.New(mode, a.Out, a.Err)
+	a.Output = output.New(format, a.OutputQuiet, a.Out, a.Err)
+	return nil
 }

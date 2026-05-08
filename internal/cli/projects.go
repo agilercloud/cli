@@ -65,8 +65,7 @@ func newProjectsGetCmd(a *app.App) *cobra.Command {
 			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s?expand=%s", args[0], expand), nil, &result); err != nil {
 				return err
 			}
-			renderProjectDetail(a.Output, result)
-			return nil
+			return renderProjectDetail(a.Output, result)
 		},
 	}
 }
@@ -243,9 +242,13 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 					}
 					seen[key] = struct{}{}
 
-					if a.Output.IsJSON() {
-						a.Output.JSON(l)
-					} else {
+					switch {
+					case a.Output.Format == output.FormatYAML:
+						a.Output.Text("---")
+						a.Output.Structured(l)
+					case a.Output.IsStructured():
+						a.Output.Structured(l)
+					default:
 						a.Output.Text("[%s] %s: %s", l.Timestamp, l.Priority, l.Message)
 					}
 
@@ -334,8 +337,8 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 // --- Renderers ---
 
 func renderProjectsList(w *output.Writer, ps []api.Project) {
-	if w.IsJSON() {
-		w.JSON(ps)
+	if w.IsStructured() {
+		w.Structured(ps)
 		return
 	}
 	if len(ps) == 0 {
@@ -349,14 +352,17 @@ func renderProjectsList(w *output.Writer, ps []api.Project) {
 	w.Table([]string{"ID", "NAME", "STATUS", "REGION", "RUNTIME"}, rows)
 }
 
-func renderProjectDetail(w *output.Writer, p api.Project) {
-	if w.IsJSON() {
-		w.JSON(p)
-		return
+func renderProjectDetail(w *output.Writer, p api.Project) error {
+	if w.IsTabular() {
+		return tabularUnsupportedErr(w)
+	}
+	if w.IsStructured() {
+		w.Structured(p)
+		return nil
 	}
 	if w.IsQuiet() {
 		w.Text("%s", p.ID)
-		return
+		return nil
 	}
 	w.Text("ID:        %s", p.ID)
 	w.Text("Name:      %s", p.Name)
@@ -374,11 +380,12 @@ func renderProjectDetail(w *output.Writer, p api.Project) {
 			w.Text("  %s (%s)", d.Name, d.ID)
 		}
 	}
+	return nil
 }
 
 func renderUsageList(w *output.Writer, us []api.UsageRecord) {
-	if w.IsJSON() {
-		w.JSON(us)
+	if w.IsStructured() {
+		w.Structured(us)
 		return
 	}
 	if len(us) == 0 {
@@ -404,8 +411,8 @@ func renderUsageList(w *output.Writer, us []api.UsageRecord) {
 }
 
 func renderLogsList(w *output.Writer, ls []api.LogEntry) {
-	if w.IsJSON() {
-		w.JSON(ls)
+	if w.IsStructured() {
+		w.Structured(ls)
 		return
 	}
 	if len(ls) == 0 {
@@ -415,4 +422,11 @@ func renderLogsList(w *output.Writer, ls []api.LogEntry) {
 	for _, l := range ls {
 		w.Text("[%s] %s: %s", l.Timestamp, l.Priority, l.Message)
 	}
+}
+
+// tabularUnsupportedErr returns the standard error for callers that don't
+// support tabular row/column layouts (csv/tsv) — typically detail or
+// heterogeneous-data commands.
+func tabularUnsupportedErr(w *output.Writer) error {
+	return fmt.Errorf("--format=%s requires list output; use --format=json or --format=yaml", w.Format)
 }

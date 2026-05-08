@@ -18,8 +18,11 @@ func newStatusCmd(a *app.App) *cobra.Command {
 				return fmt.Errorf("status check failed: %w", err)
 			}
 
-			if a.Output.IsJSON() {
-				a.Output.JSON(result)
+			if a.Output.IsTabular() {
+				return tabularUnsupportedErr(a.Output)
+			}
+			if a.Output.IsStructured() {
+				a.Output.Structured(result)
 				return nil
 			}
 			a.Output.Text("status: %s", result.Status)

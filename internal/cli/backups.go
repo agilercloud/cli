@@ -125,8 +125,8 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 }
 
 func renderBackupsList(w *output.Writer, result api.BackupsResponse) {
-	if w.IsJSON() {
-		w.JSON(result)
+	if w.IsStructured() {
+		w.Structured(result)
 		return
 	}
 	if len(result.Data) == 0 {
@@ -144,7 +144,7 @@ func renderBackupsList(w *output.Writer, result api.BackupsResponse) {
 		}
 	}
 	w.Table([]string{"ID", "STATUS", "CREATED", "AUTO", "SIZE (MB)"}, rows)
-	if !w.IsQuiet() {
+	if w.Format == output.FormatText && !w.Quiet {
 		w.Text("\nBackup schedule: every %d hours, retain %d", result.Frequency, result.Retention)
 	}
 }

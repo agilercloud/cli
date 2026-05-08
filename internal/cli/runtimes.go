@@ -37,8 +37,7 @@ func newRuntimesCmd(a *app.App) *cobra.Command {
 			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/runtimes/%s", args[0]), nil, &result); err != nil {
 				return err
 			}
-			renderRuntimeDetail(a.Output, result)
-			return nil
+			return renderRuntimeDetail(a.Output, result)
 		},
 	})
 
@@ -46,8 +45,8 @@ func newRuntimesCmd(a *app.App) *cobra.Command {
 }
 
 func renderRuntimesList(w *output.Writer, rs []api.Runtime) {
-	if w.IsJSON() {
-		w.JSON(rs)
+	if w.IsStructured() {
+		w.Structured(rs)
 		return
 	}
 	if len(rs) == 0 {
@@ -65,10 +64,13 @@ func renderRuntimesList(w *output.Writer, rs []api.Runtime) {
 	w.Table([]string{"ID", "DESCRIPTION", "DEPRECATED"}, rows)
 }
 
-func renderRuntimeDetail(w *output.Writer, r api.Runtime) {
-	if w.IsJSON() {
-		w.JSON(r)
-		return
+func renderRuntimeDetail(w *output.Writer, r api.Runtime) error {
+	if w.IsTabular() {
+		return tabularUnsupportedErr(w)
+	}
+	if w.IsStructured() {
+		w.Structured(r)
+		return nil
 	}
 	w.Text("ID:          %s", r.ID)
 	w.Text("Description: %s", r.Description)
@@ -77,4 +79,5 @@ func renderRuntimeDetail(w *output.Writer, r api.Runtime) {
 	if r.DeprecatedAt != nil {
 		w.Text("Deprecated:  %s", *r.DeprecatedAt)
 	}
+	return nil
 }

@@ -23,7 +23,7 @@ func newTestApp(t *testing.T) (*app.App, *bytes.Buffer, *bytes.Buffer) {
 		In:      strings.NewReader(""),
 		Out:     out,
 		Err:     errBuf,
-		Output:  output.New(output.ModeText, out, errBuf),
+		Output:  output.New(output.FormatText, false, out, errBuf),
 		FS:      fsx.NewMemFS(),
 		Clock:   clock.Real{},
 	}

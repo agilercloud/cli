@@ -37,8 +37,7 @@ func newRegionsCmd(a *app.App) *cobra.Command {
 			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/regions/%s", args[0]), nil, &result); err != nil {
 				return err
 			}
-			renderRegionDetail(a.Output, result)
-			return nil
+			return renderRegionDetail(a.Output, result)
 		},
 	})
 
@@ -46,8 +45,8 @@ func newRegionsCmd(a *app.App) *cobra.Command {
 }
 
 func renderRegionsList(w *output.Writer, rs []api.Region) {
-	if w.IsJSON() {
-		w.JSON(rs)
+	if w.IsStructured() {
+		w.Structured(rs)
 		return
 	}
 	if len(rs) == 0 {
@@ -61,13 +60,17 @@ func renderRegionsList(w *output.Writer, rs []api.Region) {
 	w.Table([]string{"ID", "DESCRIPTION"}, rows)
 }
 
-func renderRegionDetail(w *output.Writer, r api.Region) {
-	if w.IsJSON() {
-		w.JSON(r)
-		return
+func renderRegionDetail(w *output.Writer, r api.Region) error {
+	if w.IsTabular() {
+		return tabularUnsupportedErr(w)
+	}
+	if w.IsStructured() {
+		w.Structured(r)
+		return nil
 	}
 	w.Text("ID:          %s", r.ID)
 	w.Text("Description: %s", r.Description)
 	w.Text("Created:     %s", r.CreatedAt)
 	w.Text("Updated:     %s", r.UpdatedAt)
+	return nil
 }
