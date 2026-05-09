@@ -19,8 +19,8 @@ type osLoader struct {
 	opts Options
 }
 
-func (l *osLoader) Load() (*Config, error)            { return Load(l.opts) }
-func (l *osLoader) Save(c *Config) error              { return Save(l.opts, c) }
-func (l *osLoader) Get(key string) (string, error)    { return Get(l.opts, key) }
-func (l *osLoader) Set(key, value string) error       { return Set(l.opts, key, value) }
-func (l *osLoader) Path() string                      { return Path(l.opts) }
+func (l *osLoader) Load() (*Config, error)         { return Load(l.opts) }
+func (l *osLoader) Save(c *Config) error           { return Save(l.opts, c) }
+func (l *osLoader) Get(key string) (string, error) { return Get(l.opts, key) }
+func (l *osLoader) Set(key, value string) error    { return Set(l.opts, key, value) }
+func (l *osLoader) Path() string                   { return Path(l.opts) }
