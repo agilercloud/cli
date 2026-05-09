@@ -32,7 +32,7 @@ func newConfigCmd(a *app.App) *cobra.Command {
 			if err := loader(a).Set(args[0], args[1]); err != nil {
 				return err
 			}
-			fmt.Fprintf(a.Out, "Set %s\n", args[0])
+			_, _ = fmt.Fprintf(a.Out, "Set %s\n", args[0])
 			return nil
 		},
 	})
@@ -46,7 +46,7 @@ func newConfigCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(a.Out, v)
+			_, _ = fmt.Fprintln(a.Out, v)
 			return nil
 		},
 	})
@@ -55,7 +55,7 @@ func newConfigCmd(a *app.App) *cobra.Command {
 		Use:   "path",
 		Short: "Print config file path",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Fprintln(a.Out, loader(a).Path())
+			_, _ = fmt.Fprintln(a.Out, loader(a).Path())
 		},
 	})
 

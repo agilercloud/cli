@@ -97,9 +97,9 @@ func newProjectsCreateCmd(a *app.App) *cobra.Command {
 	cmd.Flags().StringVar(&region, "region", "", "Region ID (required)")
 	cmd.Flags().StringVar(&runtime, "runtime", "", "Runtime ID (required)")
 	cmd.Flags().IntVar(&instance, "instance", 0, "Instance type")
-	cmd.MarkFlagRequired("name")
-	cmd.MarkFlagRequired("region")
-	cmd.MarkFlagRequired("runtime")
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("region")
+	_ = cmd.MarkFlagRequired("runtime")
 	return cmd
 }
 

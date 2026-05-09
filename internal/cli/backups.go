@@ -87,7 +87,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			var dest io.Writer
 			var toClose io.Closer
@@ -104,7 +104,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 
 			n, err := io.Copy(dest, resp.Body)
 			if toClose != nil {
-				toClose.Close()
+				_ = toClose.Close()
 			}
 			if err != nil {
 				return fmt.Errorf("write file: %w", err)
@@ -118,7 +118,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	}
 	dl.Flags().String("type", "", "Download type: 'storage' or 'database' (required)")
 	dl.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
-	dl.MarkFlagRequired("type")
+	_ = dl.MarkFlagRequired("type")
 	cmd.AddCommand(dl)
 
 	return cmd

@@ -125,7 +125,7 @@ func TestDoRawCustomHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DoRaw: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if gotCT != "application/octet-stream" {
 		t.Errorf("Content-Type: %q", gotCT)

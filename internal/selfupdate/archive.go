@@ -65,7 +65,7 @@ func downloadToFile(ctx context.Context, url, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("status %s", resp.Status)
 	}
@@ -74,7 +74,7 @@ func downloadToFile(ctx context.Context, url, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	limit := int64(MaxDownloadMiB) << 20
 	if _, err := io.Copy(f, io.LimitReader(resp.Body, limit+1)); err != nil {
@@ -95,7 +95,7 @@ func sha256File(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
@@ -109,13 +109,13 @@ func ExtractBinary(tgzPath, destPath string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	gz, err := gzip.NewReader(f)
 	if err != nil {
 		return err
 	}
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 
 	tr := tar.NewReader(gz)
 	for {
@@ -137,7 +137,7 @@ func ExtractBinary(tgzPath, destPath string) error {
 			return err
 		}
 		if _, err := io.Copy(out, io.LimitReader(tr, int64(MaxDownloadMiB)<<20)); err != nil {
-			out.Close()
+			_ = out.Close()
 			return err
 		}
 		return out.Close()

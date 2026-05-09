@@ -44,7 +44,7 @@ func runUpgrade(ctx context.Context, a *app.App, check, force bool, version stri
 	if !force {
 		switch source {
 		case selfupdate.SourceHomebrew, selfupdate.SourceGoInstall, selfupdate.SourceDev:
-			fmt.Fprintln(a.Out, hint)
+			_, _ = fmt.Fprintln(a.Out, hint)
 			return nil
 		}
 	}
@@ -62,17 +62,17 @@ func runUpgrade(ctx context.Context, a *app.App, check, force bool, version stri
 		cmp := selfupdate.CompareVersions(current, latest)
 		switch {
 		case cmp < 0:
-			fmt.Fprintln(a.Out, "run 'agiler upgrade' to update")
+			_, _ = fmt.Fprintln(a.Out, "run 'agiler upgrade' to update")
 		case cmp == 0:
-			fmt.Fprintf(a.Out, "agiler is up to date (%s)\n", rel.TagName)
+			_, _ = fmt.Fprintf(a.Out, "agiler is up to date (%s)\n", rel.TagName)
 		default:
-			fmt.Fprintln(a.Out, "you are ahead of the latest published release")
+			_, _ = fmt.Fprintln(a.Out, "you are ahead of the latest published release")
 		}
 		return nil
 	}
 
 	if !force && version == "" && selfupdate.CompareVersions(current, latest) >= 0 {
-		fmt.Fprintf(a.Out, "agiler is up to date (%s)\n", rel.TagName)
+		_, _ = fmt.Fprintf(a.Out, "agiler is up to date (%s)\n", rel.TagName)
 		return nil
 	}
 
@@ -85,33 +85,33 @@ func runUpgrade(ctx context.Context, a *app.App, check, force bool, version stri
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	printCurrentLatest(a, a.Version, rel.TagName)
-	fmt.Fprintf(a.Out, "downloading %s\n", archive)
+	_, _ = fmt.Fprintf(a.Out, "downloading %s\n", archive)
 	archivePath, err := selfupdate.DownloadAndVerify(ctx, rel.TagName, archive, tmpDir)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(a.Out, "verifying sha256... ok")
+	_, _ = fmt.Fprintln(a.Out, "verifying sha256... ok")
 
 	newBinary := filepath.Join(tmpDir, "agiler.new")
 	if err := selfupdate.ExtractBinary(archivePath, newBinary); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(a.Out, "installing to %s\n", exe)
+	_, _ = fmt.Fprintf(a.Out, "installing to %s\n", exe)
 	if err := selfupdate.ReplaceExecutable(newBinary, exe); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(a.Out, "upgraded agiler %s -> %s\n", displayVersion(a.Version), rel.TagName)
+	_, _ = fmt.Fprintf(a.Out, "upgraded agiler %s -> %s\n", displayVersion(a.Version), rel.TagName)
 	return nil
 }
 
 func printCurrentLatest(a *app.App, current, latest string) {
-	fmt.Fprintf(a.Out, "current: %s\n", displayVersion(current))
-	fmt.Fprintf(a.Out, "latest:  %s\n", latest)
+	_, _ = fmt.Fprintf(a.Out, "current: %s\n", displayVersion(current))
+	_, _ = fmt.Fprintf(a.Out, "latest:  %s\n", latest)
 }
 
 func displayVersion(v string) string {

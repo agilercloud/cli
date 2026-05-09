@@ -100,7 +100,7 @@ func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remo
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	headers := map[string]string{}
 	if fi, err := f.Stat(); err == nil {
@@ -112,7 +112,7 @@ func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remo
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	return nil
 }
 
@@ -231,7 +231,7 @@ func downloadSingleFile(ctx context.Context, client app.APIClient, projectID, re
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
 		return fmt.Errorf("create parent directory: %w", err)
@@ -241,7 +241,7 @@ func downloadSingleFile(ctx context.Context, client app.APIClient, projectID, re
 	if err != nil {
 		return fmt.Errorf("create output file: %w", err)
 	}
-	defer dest.Close()
+	defer func() { _ = dest.Close() }()
 
 	if _, err := io.Copy(dest, resp.Body); err != nil {
 		return fmt.Errorf("write file: %w", err)
@@ -326,7 +326,7 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				defer resp.Body.Close()
+				defer func() { _ = resp.Body.Close() }()
 				_, err = io.Copy(a.Out, resp.Body)
 				return err
 			}

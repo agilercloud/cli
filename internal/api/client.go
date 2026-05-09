@@ -54,7 +54,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader) (*
 	}
 
 	if resp.StatusCode >= 400 {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return nil, decodeAPIError(resp)
 	}
 
@@ -87,7 +87,7 @@ func (c *Client) DoRaw(ctx context.Context, method, path, contentType string, he
 	}
 
 	if resp.StatusCode >= 400 {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		return nil, decodeAPIError(resp)
 	}
 
@@ -101,7 +101,7 @@ func (c *Client) DoJSON(ctx context.Context, method, path string, body io.Reader
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if dest == nil {
 		return nil
@@ -131,7 +131,7 @@ func (c *Client) DoJSONIdempotent(ctx context.Context, method, path string, body
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		return decodeAPIError(resp)

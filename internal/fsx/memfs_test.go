@@ -27,7 +27,7 @@ func TestMemFSRoundtrip(t *testing.T) {
 		t.Fatalf("Open: %v", err)
 	}
 	b, _ := io.ReadAll(rc)
-	rc.Close()
+	_ = rc.Close()
 	if string(b) != "hello" {
 		t.Errorf("Read = %q, want %q", b, "hello")
 	}
@@ -68,7 +68,7 @@ func TestMemFSCreate(t *testing.T) {
 	if _, err := w.Write([]byte("data")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	w.Close()
+	_ = w.Close()
 
 	info, err := fs.Stat("/x/y.txt")
 	if err != nil {

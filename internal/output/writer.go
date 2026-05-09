@@ -83,17 +83,17 @@ func (w *Writer) Table(headers []string, rows [][]string) {
 		if w.Quiet {
 			for _, row := range rows {
 				if len(row) > 0 {
-					fmt.Fprintln(w.Out, row[0])
+					_, _ = fmt.Fprintln(w.Out, row[0])
 				}
 			}
 			return
 		}
 		tw := tabwriter.NewWriter(w.Out, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(tw, strings.Join(headers, "\t"))
+		_, _ = fmt.Fprintln(tw, strings.Join(headers, "\t"))
 		for _, row := range rows {
-			fmt.Fprintln(tw, strings.Join(row, "\t"))
+			_, _ = fmt.Fprintln(tw, strings.Join(row, "\t"))
 		}
-		tw.Flush()
+		_ = tw.Flush()
 	}
 }
 
@@ -101,7 +101,7 @@ func (w *Writer) Table(headers []string, rows [][]string) {
 // callers that want the message suppressed in structured modes should guard
 // with IsStructured()/IsTabular().
 func (w *Writer) Text(format string, args ...any) {
-	fmt.Fprintf(w.Out, format+"\n", args...)
+	_, _ = fmt.Fprintf(w.Out, format+"\n", args...)
 }
 
 // Structured encodes v as JSON or YAML to stdout, depending on Format.
@@ -115,7 +115,7 @@ func (w *Writer) Structured(v any) {
 	case FormatYAML:
 		b, err := yaml.Marshal(v)
 		if err != nil {
-			fmt.Fprintf(w.Err, "yaml encode: %v\n", err)
+			_, _ = fmt.Fprintf(w.Err, "yaml encode: %v\n", err)
 			return
 		}
 		_, _ = w.Out.Write(b)
@@ -128,7 +128,7 @@ func (w *Writer) Structured(v any) {
 // since arbitrary nested data isn't tabular.
 func (w *Writer) JSON(v any) {
 	if w.IsTabular() {
-		fmt.Fprintf(w.Err, "warning: --format=%s is not supported here; emitting json\n", w.Format)
+		_, _ = fmt.Fprintf(w.Err, "warning: --format=%s is not supported here; emitting json\n", w.Format)
 		enc := json.NewEncoder(w.Out)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(v)
@@ -146,12 +146,12 @@ func (w *Writer) JSON(v any) {
 // RawJSON copies already-serialized JSON bytes straight to stdout.
 func (w *Writer) RawJSON(r io.Reader) {
 	_, _ = io.Copy(w.Out, r)
-	fmt.Fprintln(w.Out)
+	_, _ = fmt.Fprintln(w.Out)
 }
 
 // Stderr writes a diagnostic line to stderr (progress, warnings).
 func (w *Writer) Stderr(format string, args ...any) {
-	fmt.Fprintf(w.Err, format+"\n", args...)
+	_, _ = fmt.Fprintf(w.Err, format+"\n", args...)
 }
 
 func (w *Writer) writeDelimited(headers []string, rows [][]string, comma rune) {

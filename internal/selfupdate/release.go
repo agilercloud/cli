@@ -50,7 +50,7 @@ func FetchRelease(ctx context.Context, tag string) (*Release, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not reach github.com: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == 404 {
 		if tag != "" {
