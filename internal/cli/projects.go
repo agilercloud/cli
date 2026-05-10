@@ -60,9 +60,8 @@ func newProjectsGetCmd(a *app.App) *cobra.Command {
 		Short: "Get project details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			expand := "variables"
 			var result api.Project
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s?expand=%s", args[0], expand), nil, &result); err != nil {
+			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s", args[0]), nil, &result); err != nil {
 				return err
 			}
 			return renderProjectDetail(a.Output, result)

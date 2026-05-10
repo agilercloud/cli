@@ -50,7 +50,7 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var result api.Project
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s?expand=rules", args[0]), nil, &result); err != nil {
+			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s", args[0]), nil, &result); err != nil {
 				return err
 			}
 
