@@ -42,7 +42,7 @@ func TestFilesMoveSendsXMoveSourceHeader(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesMoveCmd(a)
-	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt"})
+	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt", "--overwrite"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("move command failed: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestFilesMoveSendsXMoveSourceHeader(t *testing.T) {
 		t.Errorf("X-Copy-Source should be empty, got %q", gotCopy)
 	}
 	if gotINM != "" {
-		t.Errorf("If-None-Match should be unset by default, got %q", gotINM)
+		t.Errorf("If-None-Match should be unset with --overwrite, got %q", gotINM)
 	}
 	if gotCT != "" {
 		// Content-Type must NOT be set on a body-less move/copy PUT.
@@ -90,7 +90,7 @@ func TestFilesCopySendsXCopySourceHeader(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesCopyCmd(a)
-	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt", "--no-clobber"})
+	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt", "--overwrite"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("copy command failed: %v", err)
 	}
@@ -101,13 +101,14 @@ func TestFilesCopySendsXCopySourceHeader(t *testing.T) {
 	if gotMove != "" {
 		t.Errorf("X-Move-Source should be empty, got %q", gotMove)
 	}
-	if gotINM != "*" {
-		t.Errorf("If-None-Match = %q, want *", gotINM)
+	if gotINM != "" {
+		t.Errorf("If-None-Match should be unset with --overwrite, got %q", gotINM)
 	}
 }
 
-// TestFilesMoveNoClobberSetsIfNoneMatch verifies the --no-clobber flag.
-func TestFilesMoveNoClobberSetsIfNoneMatch(t *testing.T) {
+// TestFilesMoveDefaultSetsIfNoneMatch verifies that without --overwrite, move
+// refuses to clobber an existing destination by sending If-None-Match: *.
+func TestFilesMoveDefaultSetsIfNoneMatch(t *testing.T) {
 	var gotINM string
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -121,18 +122,20 @@ func TestFilesMoveNoClobberSetsIfNoneMatch(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesMoveCmd(a)
-	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt", "--no-clobber"})
+	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("move command failed: %v", err)
 	}
 
 	if gotINM != "*" {
-		t.Errorf("If-None-Match = %q, want *", gotINM)
+		t.Errorf("If-None-Match = %q, want * (no-overwrite is the default)", gotINM)
 	}
 }
 
-// TestFilesUploadNoClobberSetsIfNoneMatch verifies upload --no-clobber.
-func TestFilesUploadNoClobberSetsIfNoneMatch(t *testing.T) {
+// TestFilesUploadDefaultSetsIfNoneMatch verifies that without --overwrite,
+// upload refuses to clobber by sending If-None-Match: *. --force is unrelated:
+// it only bypasses the unchanged-file skip check.
+func TestFilesUploadDefaultSetsIfNoneMatch(t *testing.T) {
 	var gotINM string
 	var gotCT string
 
@@ -154,16 +157,48 @@ func TestFilesUploadNoClobberSetsIfNoneMatch(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesUploadCmd(a)
-	cmd.SetArgs([]string{"proj-1", "remote.txt", src, "--no-clobber", "--force"})
+	cmd.SetArgs([]string{"proj-1", "remote.txt", src, "--force"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("upload command failed: %v", err)
 	}
 
 	if gotINM != "*" {
-		t.Errorf("If-None-Match = %q, want *", gotINM)
+		t.Errorf("If-None-Match = %q, want * (no-overwrite is the default)", gotINM)
 	}
 	if !strings.HasPrefix(gotCT, "application/octet-stream") {
 		t.Errorf("Content-Type = %q, want application/octet-stream", gotCT)
+	}
+}
+
+// TestFilesUploadOverwriteClearsIfNoneMatch verifies that --overwrite drops
+// the If-None-Match: * guard so the upload replaces an existing file.
+func TestFilesUploadOverwriteClearsIfNoneMatch(t *testing.T) {
+	var gotINM string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotINM = r.Header.Get("If-None-Match")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	tmp := t.TempDir()
+	src := tmp + "/hello.txt"
+	if err := writeFileForTest(src, "data"); err != nil {
+		t.Fatal(err)
+	}
+
+	a, _, _ := newTestApp(t)
+	a.API = api.NewClient(srv.URL, "test-key")
+
+	cmd := newFilesUploadCmd(a)
+	cmd.SetArgs([]string{"proj-1", "remote.txt", src, "--overwrite", "--force"})
+	if err := cmd.ExecuteContext(context.Background()); err != nil {
+		t.Fatalf("upload command failed: %v", err)
+	}
+
+	if gotINM != "" {
+		t.Errorf("If-None-Match = %q, want empty with --overwrite", gotINM)
 	}
 }
 

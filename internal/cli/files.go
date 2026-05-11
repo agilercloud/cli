@@ -96,7 +96,7 @@ func remoteParentDir(remotePath string) string {
 
 // --- Upload ---
 
-func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remotePath, localPath string, noClobber bool) error {
+func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remotePath, localPath string, overwrite bool) error {
 	f, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
@@ -107,7 +107,7 @@ func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remo
 	if fi, err := f.Stat(); err == nil {
 		headers["Last-Modified"] = fi.ModTime().UTC().Format(http.TimeFormat)
 	}
-	if noClobber {
+	if !overwrite {
 		headers["If-None-Match"] = "*"
 	}
 
@@ -120,7 +120,7 @@ func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remo
 	return nil
 }
 
-func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir string, force, noClobber bool, stats *syncStats) error {
+func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir string, force, overwrite bool, stats *syncStats) error {
 	entries, err := os.ReadDir(localDir)
 	if err != nil {
 		return fmt.Errorf("read directory: %w", err)
@@ -146,7 +146,7 @@ func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir 
 		remotePath := path.Join(remoteBase, entry.Name())
 
 		if entry.IsDir() {
-			if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, noClobber, stats); err != nil {
+			if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, overwrite, stats); err != nil {
 				return err
 			}
 			continue
@@ -162,7 +162,7 @@ func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir 
 			}
 		}
 
-		if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, noClobber); err != nil {
+		if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, overwrite); err != nil {
 			a.Output.Stderr("error %s: %v", remotePath, err)
 			stats.errors++
 			continue
@@ -184,7 +184,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 			remotePath := args[1]
 			localPath := args[2]
 			force, _ := cmd.Flags().GetBool("force")
-			noClobber, _ := cmd.Flags().GetBool("no-clobber")
+			overwrite, _ := cmd.Flags().GetBool("overwrite")
 
 			fi, err := os.Stat(localPath)
 			if err != nil {
@@ -193,7 +193,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 
 			if fi.IsDir() {
 				stats := &syncStats{}
-				if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, noClobber, stats); err != nil {
+				if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, overwrite, stats); err != nil {
 					return err
 				}
 				stats.print(a.Output)
@@ -217,7 +217,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 				}
 			}
 
-			if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, noClobber); err != nil {
+			if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, overwrite); err != nil {
 				return err
 			}
 			a.Output.Text("File uploaded.")
@@ -225,7 +225,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolP("force", "f", false, "Force transfer even if file is unchanged")
-	cmd.Flags().BoolP("no-clobber", "n", false, "Fail if the remote destination already exists (sets If-None-Match: *)")
+	cmd.Flags().BoolP("overwrite", "o", false, "Overwrite the remote destination if it already exists (default: fail with 412 if exists)")
 	return cmd
 }
 
@@ -424,7 +424,7 @@ func newFilesTransferCmd(a *app.App, name, short, sourceHeader, successText stri
 		Short: short,
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			noClobber, _ := cmd.Flags().GetBool("no-clobber")
+			overwrite, _ := cmd.Flags().GetBool("overwrite")
 			projectID := args[0]
 			source := args[1]
 			destination := args[2]
@@ -432,7 +432,7 @@ func newFilesTransferCmd(a *app.App, name, short, sourceHeader, successText stri
 			headers := map[string]string{
 				sourceHeader: projectFileSource(projectID, source),
 			}
-			if noClobber {
+			if !overwrite {
 				headers["If-None-Match"] = "*"
 			}
 
@@ -446,7 +446,7 @@ func newFilesTransferCmd(a *app.App, name, short, sourceHeader, successText stri
 			return nil
 		},
 	}
-	cmd.Flags().BoolP("no-clobber", "n", false, "Fail if the destination already exists (sets If-None-Match: *)")
+	cmd.Flags().BoolP("overwrite", "o", false, "Overwrite the destination if it already exists (default: fail with 412 if exists)")
 	return cmd
 }
 
