@@ -49,19 +49,19 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 		Short: "List project rules",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result api.Project
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s", args[0]), nil, &result); err != nil {
+			var result []api.Rule
+			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/rules", args[0]), nil, &result); err != nil {
 				return err
 			}
 
 			if a.Output.IsTabular() {
 				return tabularUnsupportedErr(a.Output)
 			}
-			if len(result.Rules) == 0 && !a.Output.IsStructured() {
+			if len(result) == 0 && !a.Output.IsStructured() {
 				a.Output.Text("No rules configured.")
 				return nil
 			}
-			a.Output.JSON(result.Rules)
+			a.Output.JSON(result)
 			return nil
 		},
 	})
@@ -79,8 +79,8 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 			if err := json.Unmarshal(data, &rule); err != nil {
 				return fmt.Errorf("invalid JSON: %w", err)
 			}
-			body, _ := json.Marshal(map[string]any{"rules": []map[string]any{rule}})
-			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s", args[0]), bytes.NewReader(body), nil); err != nil {
+			body, _ := json.Marshal(rule)
+			if err := a.API.DoJSONIdempotent(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/rules", args[0]), bytes.NewReader(body), nil); err != nil {
 				return err
 			}
 			a.Output.Text("Rule created.")
@@ -101,9 +101,10 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 			if err := json.Unmarshal(data, &rule); err != nil {
 				return fmt.Errorf("invalid JSON: %w", err)
 			}
-			rule["id"] = args[1]
-			body, _ := json.Marshal(map[string]any{"rules": []map[string]any{rule}})
-			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s", args[0]), bytes.NewReader(body), nil); err != nil {
+			// the rule-id is in the path; strip any stray "id" from the body
+			delete(rule, "id")
+			body, _ := json.Marshal(rule)
+			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s/rules/%s", args[0], args[1]), bytes.NewReader(body), nil); err != nil {
 				return err
 			}
 			a.Output.Text("Rule updated.")

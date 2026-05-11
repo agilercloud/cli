@@ -1,4 +1,2 @@
 ID  STATUS  CREATED     AUTO  SIZE (MB)
 b1  done    2025-01-01  true  123
-
-Backup schedule: every 24 hours, retain 7

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -22,7 +24,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "List project backups",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result api.BackupsResponse
+			var result []api.Backup
 			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/backups", args[0]), nil, &result); err != nil {
 				return err
 			}
@@ -121,20 +123,64 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	_ = dl.MarkFlagRequired("type")
 	cmd.AddCommand(dl)
 
+	policy := &cobra.Command{
+		Use:   "policy <project>",
+		Short: "Show backup policy",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var result api.BackupPolicy
+			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/backups/policy", args[0]), nil, &result); err != nil {
+				return err
+			}
+			renderBackupPolicy(a.Output, result)
+			return nil
+		},
+	}
+
+	policy.AddCommand(&cobra.Command{
+		Use:   "set <project>",
+		Short: "Update backup policy (--frequency-days, --retention-days)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			body := map[string]any{}
+			if cmd.Flags().Changed("frequency-days") {
+				v, _ := cmd.Flags().GetInt("frequency-days")
+				body["frequency_days"] = v
+			}
+			if cmd.Flags().Changed("retention-days") {
+				v, _ := cmd.Flags().GetInt("retention-days")
+				body["retention_days"] = v
+			}
+			if len(body) == 0 {
+				return fmt.Errorf("provide --frequency-days and/or --retention-days")
+			}
+			data, _ := json.Marshal(body)
+			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s/backups/policy", args[0]), bytes.NewReader(data), nil); err != nil {
+				return err
+			}
+			a.Output.Text("Backup policy updated.")
+			return nil
+		},
+	})
+	policy.PersistentFlags().Int("frequency-days", 0, "Backup frequency in days (0 disables)")
+	policy.PersistentFlags().Int("retention-days", 0, "Backup retention in days")
+
+	cmd.AddCommand(policy)
+
 	return cmd
 }
 
-func renderBackupsList(w *output.Writer, result api.BackupsResponse) {
+func renderBackupsList(w *output.Writer, backups []api.Backup) {
 	if w.IsStructured() {
-		w.Structured(result)
+		w.Structured(backups)
 		return
 	}
-	if len(result.Data) == 0 {
+	if len(backups) == 0 {
 		w.Text("No backups found.")
 		return
 	}
-	rows := make([][]string, len(result.Data))
-	for i, b := range result.Data {
+	rows := make([][]string, len(backups))
+	for i, b := range backups {
 		rows[i] = []string{
 			b.ID,
 			b.Status,
@@ -144,7 +190,13 @@ func renderBackupsList(w *output.Writer, result api.BackupsResponse) {
 		}
 	}
 	w.Table([]string{"ID", "STATUS", "CREATED", "AUTO", "SIZE (MB)"}, rows)
-	if w.Format == output.FormatText && !w.Quiet {
-		w.Text("\nBackup schedule: every %d hours, retain %d", result.Frequency, result.Retention)
+}
+
+func renderBackupPolicy(w *output.Writer, p api.BackupPolicy) {
+	if w.IsStructured() {
+		w.Structured(p)
+		return
 	}
+	w.Text("Frequency: every %d days", p.FrequencyDays)
+	w.Text("Retention: %d days", p.RetentionDays)
 }

@@ -58,7 +58,6 @@ func TestRenderProjectDetail(t *testing.T) {
 		ID: "p1", Name: "alpha", Status: "running", Active: true,
 		Region: "eu", Runtime: "node22", Instance: 1,
 		CreatedAt: "2025-01-01", UpdatedAt: "2025-02-01",
-		Domains: []api.Domain{{ID: "d1", Name: "example.com"}},
 	}
 	assertRender(t, "project_detail_text.txt",
 		func(w *output.Writer) { _ = renderProjectDetail(w, data) }, output.FormatText, false)
@@ -135,12 +134,8 @@ func TestRenderDomainsList(t *testing.T) {
 }
 
 func TestRenderBackupsList(t *testing.T) {
-	data := api.BackupsResponse{
-		Frequency: 24,
-		Retention: 7,
-		Data: []api.Backup{
-			{ID: "b1", Status: "done", CreatedAt: "2025-01-01", Automatic: true, Size: 123},
-		},
+	data := []api.Backup{
+		{ID: "b1", Status: "done", CreatedAt: "2025-01-01", Automatic: true, Size: 123},
 	}
 	assertRender(t, "backups_list_text.txt",
 		func(w *output.Writer) { renderBackupsList(w, data) }, output.FormatText, false)

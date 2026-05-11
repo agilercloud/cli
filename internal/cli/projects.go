@@ -165,21 +165,43 @@ func newUsageCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "usage <project>",
 		Short: "Get project usage statistics",
+		Long:  "Fetch project usage bucketed by --granularity (hour|day|week|month). --since/--until accept RFC3339 timestamps; --limit caps page size.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			limit, _ := cmd.Flags().GetString("limit")
-			if limit == "" {
-				limit = "7"
+			since, _ := cmd.Flags().GetString("since")
+			until, _ := cmd.Flags().GetString("until")
+			granularity, _ := cmd.Flags().GetString("granularity")
+
+			params := url.Values{}
+			if limit != "" {
+				params.Set("limit", limit)
+			}
+			if since != "" {
+				params.Set("since", since)
+			}
+			if until != "" {
+				params.Set("until", until)
+			}
+			if granularity != "" {
+				params.Set("granularity", granularity)
+			}
+			path := fmt.Sprintf("/v1/projects/%s/usage", args[0])
+			if encoded := params.Encode(); encoded != "" {
+				path = path + "?" + encoded
 			}
 			var result []api.UsageRecord
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/usage?limit=%s", args[0], limit), nil, &result); err != nil {
+			if err := a.API.DoJSON(cmd.Context(), "GET", path, nil, &result); err != nil {
 				return err
 			}
 			renderUsageList(a.Output, result)
 			return nil
 		},
 	}
-	cmd.Flags().String("limit", "7", "Number of data points")
+	cmd.Flags().String("limit", "30", "Page size (default 30, max 365)")
+	cmd.Flags().String("since", "", "Start of the window, RFC3339 (e.g. 2026-04-01T00:00:00Z)")
+	cmd.Flags().String("until", "", "End of the window, RFC3339")
+	cmd.Flags().String("granularity", "day", "Bucket size: hour|day|week|month (default day)")
 	return cmd
 }
 
@@ -190,18 +212,39 @@ func newLogsCmd(a *app.App) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			limit, _ := cmd.Flags().GetString("limit")
-			if limit == "" {
-				limit = "50"
+			since, _ := cmd.Flags().GetString("since")
+			until, _ := cmd.Flags().GetString("until")
+			q, _ := cmd.Flags().GetString("q")
+
+			params := url.Values{}
+			if limit != "" {
+				params.Set("limit", limit)
+			}
+			if since != "" {
+				params.Set("since", since)
+			}
+			if until != "" {
+				params.Set("until", until)
+			}
+			if q != "" {
+				params.Set("q", q)
+			}
+			path := fmt.Sprintf("/v1/projects/%s/logs", args[0])
+			if encoded := params.Encode(); encoded != "" {
+				path = path + "?" + encoded
 			}
 			var result []api.LogEntry
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/logs?limit=%s", args[0], limit), nil, &result); err != nil {
+			if err := a.API.DoJSON(cmd.Context(), "GET", path, nil, &result); err != nil {
 				return err
 			}
 			renderLogsList(a.Output, result)
 			return nil
 		},
 	}
-	cmd.Flags().String("limit", "50", "Number of log entries")
+	cmd.Flags().String("limit", "100", "Page size (default 100, max 1000)")
+	cmd.Flags().String("since", "", "Start of the window, RFC3339")
+	cmd.Flags().String("until", "", "End of the window, RFC3339")
+	cmd.Flags().String("q", "", "Search query")
 	cmd.AddCommand(newLogsTailCmd(a))
 	cmd.AddCommand(newLogsSearchCmd(a))
 	return cmd
@@ -372,13 +415,6 @@ func renderProjectDetail(w *output.Writer, p api.Project) error {
 	w.Text("Instance:  %d", p.Instance)
 	w.Text("Created:   %s", p.CreatedAt)
 	w.Text("Updated:   %s", p.UpdatedAt)
-
-	if len(p.Domains) > 0 {
-		w.Text("\nDomains:")
-		for _, d := range p.Domains {
-			w.Text("  %s (%s)", d.Name, d.ID)
-		}
-	}
 	return nil
 }
 

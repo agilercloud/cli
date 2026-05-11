@@ -2,9 +2,9 @@ package api
 
 import "encoding/json"
 
-// Project is a minimal projection of the /v1/projects resource.
-// Fields added here match the keys the CLI renders; unused server fields
-// can stay ignored.
+// Project is the per-project response shape for /v1/projects and
+// /v1/projects/{id}. Sub-resources (domains, variables, rules, backups)
+// live behind their own endpoints; they are not embedded here.
 type Project struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -15,11 +15,6 @@ type Project struct {
 	Instance  int    `json:"instance"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
-
-	// Expand=variables fills these on GET.
-	Domains   []Domain   `json:"domains,omitempty"`
-	Variables []Variable `json:"variables,omitempty"`
-	Rules     []Rule     `json:"rules,omitempty"`
 }
 
 // File is one entry in a remote file listing.
@@ -40,11 +35,10 @@ type Backup struct {
 	Size      int64  `json:"size"`
 }
 
-// BackupsResponse is the shape of GET /v1/projects/{id}/backups.
-type BackupsResponse struct {
-	Data      []Backup `json:"data"`
-	Frequency int      `json:"frequency"`
-	Retention int      `json:"retention"`
+// BackupPolicy is the shape of GET /v1/projects/{id}/backups/policy.
+type BackupPolicy struct {
+	FrequencyDays int `json:"frequency_days"`
+	RetentionDays int `json:"retention_days"`
 }
 
 // Region describes a runtime region.
@@ -72,10 +66,12 @@ type Variable struct {
 	Value     *string `json:"value"`
 }
 
-// Domain is a custom domain attached to a project.
+// Domain is a custom domain attached to a project. Primary marks which
+// domain serves as the project's site URL.
 type Domain struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Primary bool   `json:"primary"`
 }
 
 // Rule is an untyped rule body. The structure varies and the CLI only
@@ -104,4 +100,28 @@ type LogEntry struct {
 // Status is the /status endpoint response.
 type Status struct {
 	Status string `json:"status"`
+}
+
+// SQLStatement is the shape returned by the SQL execution endpoints:
+// POST /v1/projects/{id}/sql/statements, GET /v1/projects/{id}/sql/statements,
+// and GET /v1/projects/{id}/sql/statements/{stmtId}. The Rows field is the
+// page of result rows for the current request; RowCount reports the total
+// across all pages. Both rows arrays use `[]any` for the inner cells so
+// duplicate column names and explicit column ordering survive the wire.
+type SQLStatement struct {
+	ID               string  `json:"id"`
+	SQL              string  `json:"sql"`
+	ReadOnly         bool    `json:"read_only"`
+	Timeout          *int    `json:"timeout,omitempty"`
+	Status           string  `json:"status"`
+	SubmittedAt      string  `json:"submitted_at"`
+	CompletedAt      string  `json:"completed_at,omitempty"`
+	DurationMs       *int64  `json:"duration_ms"`
+	RowCount         *int64  `json:"row_count"`
+	RowsAffected     *int64  `json:"rows_affected"`
+	Columns          []string `json:"columns"`
+	Rows             [][]any  `json:"rows"`
+	ReturningColumns []string `json:"returning_columns"`
+	ReturningRows    [][]any  `json:"returning_rows"`
+	Error            *string  `json:"error"`
 }

@@ -30,6 +30,7 @@ func newFilesCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(newFilesUploadCmd(a))
 	cmd.AddCommand(newFilesDeleteCmd(a))
 	cmd.AddCommand(newFilesMoveCmd(a))
+	cmd.AddCommand(newFilesCopyCmd(a))
 
 	return cmd
 }
@@ -95,7 +96,7 @@ func remoteParentDir(remotePath string) string {
 
 // --- Upload ---
 
-func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remotePath, localPath string) error {
+func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remotePath, localPath string, noClobber bool) error {
 	f, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
@@ -105,6 +106,9 @@ func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remo
 	headers := map[string]string{}
 	if fi, err := f.Stat(); err == nil {
 		headers["Last-Modified"] = fi.ModTime().UTC().Format(http.TimeFormat)
+	}
+	if noClobber {
+		headers["If-None-Match"] = "*"
 	}
 
 	p := "/v1/projects/" + projectID + "/files/" + encodeFilePath(remotePath)
@@ -116,7 +120,7 @@ func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remo
 	return nil
 }
 
-func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir string, force bool, stats *syncStats) error {
+func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir string, force, noClobber bool, stats *syncStats) error {
 	entries, err := os.ReadDir(localDir)
 	if err != nil {
 		return fmt.Errorf("read directory: %w", err)
@@ -142,7 +146,7 @@ func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir 
 		remotePath := path.Join(remoteBase, entry.Name())
 
 		if entry.IsDir() {
-			if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, stats); err != nil {
+			if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, noClobber, stats); err != nil {
 				return err
 			}
 			continue
@@ -158,7 +162,7 @@ func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir 
 			}
 		}
 
-		if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath); err != nil {
+		if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, noClobber); err != nil {
 			a.Output.Stderr("error %s: %v", remotePath, err)
 			stats.errors++
 			continue
@@ -180,6 +184,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 			remotePath := args[1]
 			localPath := args[2]
 			force, _ := cmd.Flags().GetBool("force")
+			noClobber, _ := cmd.Flags().GetBool("no-clobber")
 
 			fi, err := os.Stat(localPath)
 			if err != nil {
@@ -188,7 +193,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 
 			if fi.IsDir() {
 				stats := &syncStats{}
-				if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, stats); err != nil {
+				if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, noClobber, stats); err != nil {
 					return err
 				}
 				stats.print(a.Output)
@@ -212,7 +217,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 				}
 			}
 
-			if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath); err != nil {
+			if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, noClobber); err != nil {
 				return err
 			}
 			a.Output.Text("File uploaded.")
@@ -220,6 +225,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolP("force", "f", false, "Force transfer even if file is unchanged")
+	cmd.Flags().BoolP("no-clobber", "n", false, "Fail if the remote destination already exists (sets If-None-Match: *)")
 	return cmd
 }
 
@@ -398,24 +404,49 @@ func newFilesDeleteCmd(a *app.App) *cobra.Command {
 	}
 }
 
+// projectFileSource returns the canonical X-Move-Source / X-Copy-Source header
+// value for the given project and source path, with each segment percent-encoded.
+func projectFileSource(projectID, sourcePath string) string {
+	return "/v1/projects/" + projectID + "/files/" + encodeFilePath(sourcePath)
+}
+
 func newFilesMoveCmd(a *app.App) *cobra.Command {
+	return newFilesTransferCmd(a, "move", "Move or rename a file", "X-Move-Source", "File moved.")
+}
+
+func newFilesCopyCmd(a *app.App) *cobra.Command {
+	return newFilesTransferCmd(a, "copy", "Copy a file or directory", "X-Copy-Source", "File copied.")
+}
+
+func newFilesTransferCmd(a *app.App, name, short, sourceHeader, successText string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "move <project> <source> <destination>",
-		Short: "Move or rename a file",
+		Use:   name + " <project> <source> <destination>",
+		Short: short,
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			overwrite, _ := cmd.Flags().GetBool("overwrite")
+			noClobber, _ := cmd.Flags().GetBool("no-clobber")
+			projectID := args[0]
+			source := args[1]
+			destination := args[2]
 
-			body := fmt.Sprintf(`{"source":%q,"destination":%q,"overwrite":%t}`, args[1], args[2], overwrite)
-			p := "/v1/projects/" + args[0] + "/files"
-			if err := a.API.DoJSON(cmd.Context(), "PATCH", p, strings.NewReader(body), nil); err != nil {
+			headers := map[string]string{
+				sourceHeader: projectFileSource(projectID, source),
+			}
+			if noClobber {
+				headers["If-None-Match"] = "*"
+			}
+
+			p := "/v1/projects/" + projectID + "/files/" + encodeFilePath(destination)
+			resp, err := a.API.DoRaw(cmd.Context(), "PUT", p, "", headers, nil)
+			if err != nil {
 				return err
 			}
-			a.Output.Text("File moved.")
+			_ = resp.Body.Close()
+			a.Output.Text(successText)
 			return nil
 		},
 	}
-	cmd.Flags().Bool("overwrite", false, "Overwrite destination if it exists")
+	cmd.Flags().BoolP("no-clobber", "n", false, "Fail if the destination already exists (sets If-None-Match: *)")
 	return cmd
 }
 

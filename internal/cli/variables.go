@@ -22,32 +22,51 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 		Short: "List environment variables",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result api.Project
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s", args[0]), nil, &result); err != nil {
+			var result []api.Variable
+			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/variables", args[0]), nil, &result); err != nil {
 				return err
 			}
-			renderVariablesList(a.Output, result.Variables)
+			renderVariablesList(a.Output, result)
 			return nil
 		},
 	})
 
 	setCmd := &cobra.Command{
 		Use:   "set <project> <name> <value>",
-		Short: "Set an environment variable",
+		Short: "Create or update an environment variable",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sensitive, _ := cmd.Flags().GetBool("sensitive")
+
+			// Resolve to an existing variable if one with this name exists,
+			// so `variables set` is an upsert across CLI sessions.
+			var existing []api.Variable
+			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/variables", args[0]), nil, &existing); err != nil {
+				return err
+			}
+			var variableId string
+			for _, v := range existing {
+				if v.Name == args[1] {
+					variableId = v.ID
+					break
+				}
+			}
+
 			body := map[string]any{
-				"variables": []map[string]any{{
-					"name":      args[1],
-					"value":     args[2],
-					"sensitive": sensitive,
-				}},
+				"name":      args[1],
+				"value":     args[2],
+				"sensitive": sensitive,
 			}
 			data, _ := json.Marshal(body)
 
-			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s", args[0]), bytes.NewReader(data), nil); err != nil {
-				return err
+			if variableId == "" {
+				if err := a.API.DoJSONIdempotent(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/variables", args[0]), bytes.NewReader(data), nil); err != nil {
+					return err
+				}
+			} else {
+				if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s/variables/%s", args[0], variableId), bytes.NewReader(data), nil); err != nil {
+					return err
+				}
 			}
 			a.Output.Text("Variable %s set.", args[1])
 			return nil
