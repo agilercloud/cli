@@ -75,7 +75,12 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := a.API.DoJSON(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/rules", args[0]), bytes.NewReader(data), nil); err != nil {
+			var rule map[string]any
+			if err := json.Unmarshal(data, &rule); err != nil {
+				return fmt.Errorf("invalid JSON: %w", err)
+			}
+			body, _ := json.Marshal(map[string]any{"rules": []map[string]any{rule}})
+			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s", args[0]), bytes.NewReader(body), nil); err != nil {
 				return err
 			}
 			a.Output.Text("Rule created.")
@@ -92,11 +97,13 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			var body json.RawMessage
-			if err := json.Unmarshal(data, &body); err != nil {
+			var rule map[string]any
+			if err := json.Unmarshal(data, &rule); err != nil {
 				return fmt.Errorf("invalid JSON: %w", err)
 			}
-			if err := a.API.DoJSON(cmd.Context(), "PUT", fmt.Sprintf("/v1/projects/%s/rules/%s", args[0], args[1]), bytes.NewReader(data), nil); err != nil {
+			rule["id"] = args[1]
+			body, _ := json.Marshal(map[string]any{"rules": []map[string]any{rule}})
+			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s", args[0]), bytes.NewReader(body), nil); err != nil {
 				return err
 			}
 			a.Output.Text("Rule updated.")

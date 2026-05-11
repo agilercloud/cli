@@ -38,13 +38,15 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sensitive, _ := cmd.Flags().GetBool("sensitive")
 			body := map[string]any{
-				"name":      args[1],
-				"value":     args[2],
-				"sensitive": sensitive,
+				"variables": []map[string]any{{
+					"name":      args[1],
+					"value":     args[2],
+					"sensitive": sensitive,
+				}},
 			}
 			data, _ := json.Marshal(body)
 
-			if err := a.API.DoJSON(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/variables", args[0]), bytes.NewReader(data), nil); err != nil {
+			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s", args[0]), bytes.NewReader(data), nil); err != nil {
 				return err
 			}
 			a.Output.Text("Variable %s set.", args[1])

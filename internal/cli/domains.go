@@ -39,7 +39,7 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 			body := map[string]any{"domains": []string{args[1]}}
 			data, _ := json.Marshal(body)
 
-			if err := a.API.DoJSON(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/domains", args[0]), bytes.NewReader(data), nil); err != nil {
+			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s", args[0]), bytes.NewReader(data), nil); err != nil {
 				return err
 			}
 			a.Output.Text("Domain %s added.", args[1])
