@@ -71,17 +71,15 @@ func newProjectsGetCmd(a *app.App) *cobra.Command {
 
 func newProjectsCreateCmd(a *app.App) *cobra.Command {
 	var name, region, runtime string
-	var instance int
 
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new project",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			body := map[string]any{
-				"name":     name,
-				"region":   region,
-				"runtime":  runtime,
-				"instance": instance,
+				"name":    name,
+				"region":  region,
+				"runtime": runtime,
 			}
 			data, _ := json.Marshal(body)
 
@@ -95,7 +93,6 @@ func newProjectsCreateCmd(a *app.App) *cobra.Command {
 	cmd.Flags().StringVar(&name, "name", "", "Project name (required)")
 	cmd.Flags().StringVar(&region, "region", "", "Region ID (required)")
 	cmd.Flags().StringVar(&runtime, "runtime", "", "Runtime ID (required)")
-	cmd.Flags().IntVar(&instance, "instance", 0, "Instance type")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("region")
 	_ = cmd.MarkFlagRequired("runtime")
@@ -122,13 +119,9 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 				v, _ := cmd.Flags().GetString("runtime")
 				body["runtime"] = v
 			}
-			if cmd.Flags().Changed("instance") {
-				v, _ := cmd.Flags().GetInt("instance")
-				body["instance"] = v
-			}
 
 			if len(body) == 0 {
-				return fmt.Errorf("no flags provided; use --name, --active, --runtime, or --instance")
+				return fmt.Errorf("no flags provided; use --name, --active, or --runtime")
 			}
 
 			data, _ := json.Marshal(body)
@@ -142,7 +135,6 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 	cmd.Flags().String("name", "", "Project name")
 	cmd.Flags().Bool("active", false, "Active state")
 	cmd.Flags().String("runtime", "", "Runtime ID")
-	cmd.Flags().Int("instance", 0, "Instance type")
 	return cmd
 }
 
@@ -412,7 +404,6 @@ func renderProjectDetail(w *output.Writer, p api.Project) error {
 	w.Text("Active:    %t", p.Active)
 	w.Text("Region:    %s", p.Region)
 	w.Text("Runtime:   %s", p.Runtime)
-	w.Text("Instance:  %d", p.Instance)
 	w.Text("Created:   %s", p.CreatedAt)
 	w.Text("Updated:   %s", p.UpdatedAt)
 	return nil

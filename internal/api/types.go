@@ -12,7 +12,6 @@ type Project struct {
 	Active    bool   `json:"active"`
 	Region    string `json:"region"`
 	Runtime   string `json:"runtime"`
-	Instance  int    `json:"instance"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }

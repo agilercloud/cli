@@ -56,7 +56,7 @@ func TestRenderProjectsList(t *testing.T) {
 func TestRenderProjectDetail(t *testing.T) {
 	data := api.Project{
 		ID: "p1", Name: "alpha", Status: "running", Active: true,
-		Region: "eu", Runtime: "node22", Instance: 1,
+		Region: "eu", Runtime: "node22",
 		CreatedAt: "2025-01-01", UpdatedAt: "2025-02-01",
 	}
 	assertRender(t, "project_detail_text.txt",
