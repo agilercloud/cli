@@ -405,9 +405,10 @@ func newFilesDeleteCmd(a *app.App) *cobra.Command {
 }
 
 // projectFileSource returns the canonical X-Move-Source / X-Copy-Source header
-// value for the given project and source path, with each segment percent-encoded.
+// value for the given project and source path: "{project-id}/{path}" with each
+// path segment percent-encoded.
 func projectFileSource(projectID, sourcePath string) string {
-	return "/v1/projects/" + projectID + "/files/" + encodeFilePath(sourcePath)
+	return projectID + "/" + encodeFilePath(sourcePath)
 }
 
 func newFilesMoveCmd(a *app.App) *cobra.Command {

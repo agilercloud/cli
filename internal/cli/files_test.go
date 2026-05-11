@@ -53,7 +53,7 @@ func TestFilesMoveSendsXMoveSourceHeader(t *testing.T) {
 	if gotPath != "/v1/projects/proj-1/files/docs/b.txt" {
 		t.Errorf("path = %q", gotPath)
 	}
-	if gotMove != "/v1/projects/proj-1/files/docs/a.txt" {
+	if gotMove != "proj-1/docs/a.txt" {
 		t.Errorf("X-Move-Source = %q", gotMove)
 	}
 	if gotCopy != "" {
@@ -95,7 +95,7 @@ func TestFilesCopySendsXCopySourceHeader(t *testing.T) {
 		t.Fatalf("copy command failed: %v", err)
 	}
 
-	if gotCopy != "/v1/projects/proj-1/files/docs/a.txt" {
+	if gotCopy != "proj-1/docs/a.txt" {
 		t.Errorf("X-Copy-Source = %q", gotCopy)
 	}
 	if gotMove != "" {
