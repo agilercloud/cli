@@ -105,22 +105,25 @@ type Status struct {
 // POST /v1/projects/{id}/sql/statements, GET /v1/projects/{id}/sql/statements,
 // and GET /v1/projects/{id}/sql/statements/{stmtId}. The Rows field is the
 // page of result rows for the current request; RowCount reports the total
-// across all pages. Both rows arrays use `[]any` for the inner cells so
-// duplicate column names and explicit column ordering survive the wire.
+// across all pages. Rows use `[]any` for the inner cells so duplicate
+// column names and explicit column ordering survive the wire.
+//
+// Status is one of pending / success / error / cancelled. SubmittedBy
+// records the uid of the user that submitted the statement (empty for
+// machine submissions).
 type SQLStatement struct {
-	ID               string  `json:"id"`
-	SQL              string  `json:"sql"`
-	ReadOnly         bool    `json:"read_only"`
-	Timeout          *int    `json:"timeout,omitempty"`
-	Status           string  `json:"status"`
-	SubmittedAt      string  `json:"submitted_at"`
-	CompletedAt      string  `json:"completed_at,omitempty"`
-	DurationMs       *int64  `json:"duration_ms"`
-	RowCount         *int64  `json:"row_count"`
-	RowsAffected     *int64  `json:"rows_affected"`
-	Columns          []string `json:"columns"`
-	Rows             [][]any  `json:"rows"`
-	ReturningColumns []string `json:"returning_columns"`
-	ReturningRows    [][]any  `json:"returning_rows"`
-	Error            *string  `json:"error"`
+	ID           string   `json:"id"`
+	SQL          string   `json:"sql"`
+	ReadOnly     bool     `json:"read_only"`
+	Timeout      *int     `json:"timeout,omitempty"`
+	Status       string   `json:"status"`
+	SubmittedAt  string   `json:"submitted_at"`
+	SubmittedBy  string   `json:"submitted_by,omitempty"`
+	CompletedAt  string   `json:"completed_at,omitempty"`
+	DurationMs   *int64   `json:"duration_ms"`
+	RowCount     *int64   `json:"row_count"`
+	RowsAffected *int64   `json:"rows_affected"`
+	Columns      []string `json:"columns"`
+	Rows         [][]any  `json:"rows"`
+	Error        *string  `json:"error"`
 }

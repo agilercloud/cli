@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,37 +17,33 @@ import (
 
 // newSQLCmd builds the `agiler sql ...` subcommand tree.
 //
-//	agiler sql submit <project> [query] [--read-only] [--timeout=SECONDS] [--async]
+//	agiler sql execute <project> [query] [--read-only] [--timeout=SECONDS] [--async]
 //	agiler sql history <project> [--limit=N]
 //	agiler sql get <project> <statement>
 //	agiler sql delete <project> <statement>
-//
-// `submit` is also exposed as the default `agiler sql <project> [query]` for
-// backwards-compatibility with the prior single-command shape.
 func newSQLCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sql",
 		Short: "Execute SQL against a project database and inspect prior runs",
-		Long:  "Submit, list, and inspect SQL executions on a project database.",
+		Long:  "Execute, list, and inspect SQL statements on a project database.",
 	}
-	cmd.AddCommand(newSQLSubmitCmd(a))
+	cmd.AddCommand(newSQLExecuteCmd(a))
 	cmd.AddCommand(newSQLHistoryCmd(a))
 	cmd.AddCommand(newSQLGetCmd(a))
 	cmd.AddCommand(newSQLDeleteCmd(a))
 	return cmd
 }
 
-func newSQLSubmitCmd(a *app.App) *cobra.Command {
+func newSQLExecuteCmd(a *app.App) *cobra.Command {
 	var readOnly bool
 	var timeout int
 	var async bool
 
 	cmd := &cobra.Command{
-		Use:     "submit <project> [query]",
-		Aliases: []string{"exec", "run"},
-		Short:   "Execute a SQL statement against a project database",
-		Long:    "Execute SQL. Provide the statement as an argument, or pipe it via stdin.",
-		Args:    cobra.RangeArgs(1, 2),
+		Use:   "execute <project> [query]",
+		Short: "Execute a SQL statement against a project database",
+		Long:  "Execute SQL. Provide the statement as an argument, or pipe it via stdin.",
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			query, err := readSQLQuery(a, args)
 			if err != nil {
@@ -62,7 +59,8 @@ func newSQLSubmitCmd(a *app.App) *cobra.Command {
 			}
 			data, _ := json.Marshal(body)
 
-			path := fmt.Sprintf("/v1/projects/%s/sql/statements", args[0])
+			projectID := args[0]
+			path := fmt.Sprintf("/v1/projects/%s/sql/statements", projectID)
 			headers := map[string]string{}
 			if async {
 				headers["Prefer"] = "respond-async"
@@ -71,18 +69,30 @@ func newSQLSubmitCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer func() { _ = resp.Body.Close() }()
 
+			// On 202 the body is the pending metadata; we poll until status
+			// transitions away from pending, then fetch + display.
 			var result api.SQLStatement
+			pending := resp.StatusCode == http.StatusAccepted
 			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+				_ = resp.Body.Close()
 				return fmt.Errorf("decode response: %w", err)
 			}
-			return renderSQLStatement(a, result, async)
+			_ = resp.Body.Close()
+
+			if pending {
+				final, err := pollUntilDone(cmd.Context(), a, projectID, result.ID)
+				if err != nil {
+					return err
+				}
+				result = final
+			}
+			return renderSQLStatement(a, result, async && pending)
 		},
 	}
 	cmd.Flags().BoolVar(&readOnly, "read-only", false, "Wrap execution in a read-only transaction")
 	cmd.Flags().IntVar(&timeout, "timeout", 0, "Per-statement timeout in seconds (server-side)")
-	cmd.Flags().BoolVar(&async, "async", false, "Send Prefer: respond-async; returns 202 with status: pending")
+	cmd.Flags().BoolVar(&async, "async", false, "Send Prefer: respond-async; poll until complete")
 	return cmd
 }
 
@@ -129,7 +139,7 @@ func newSQLGetCmd(a *app.App) *cobra.Command {
 func newSQLDeleteCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <project> <statement>",
-		Short: "Cancel a pending execution or remove a history entry",
+		Short: "Delete a statement (cancels SQL if it's still pending)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := fmt.Sprintf("/v1/projects/%s/sql/statements/%s", args[0], args[1])
@@ -155,6 +165,32 @@ func readSQLQuery(a *app.App, args []string) (string, error) {
 		return "", fmt.Errorf("no query provided")
 	}
 	return query, nil
+}
+
+// pollUntilDone polls GET /sql/statements/{id} every second for up to
+// 10 minutes (well past WorkerTimeout) until status leaves "pending".
+// Returns the final statement; the caller decides how to render it.
+func pollUntilDone(ctx context.Context, a *app.App, projectID, stmtID string) (api.SQLStatement, error) {
+	path := fmt.Sprintf("/v1/projects/%s/sql/statements/%s", projectID, stmtID)
+	deadline := time.Now().Add(10 * time.Minute)
+
+	for {
+		var s api.SQLStatement
+		if err := a.API.DoJSON(ctx, http.MethodGet, path, nil, &s); err != nil {
+			return api.SQLStatement{}, err
+		}
+		if s.Status != "pending" {
+			return s, nil
+		}
+		if time.Now().After(deadline) {
+			return s, fmt.Errorf("timed out waiting for SQL statement to complete")
+		}
+		select {
+		case <-ctx.Done():
+			return s, ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
 }
 
 func renderSQLStatement(a *app.App, s api.SQLStatement, asyncHint bool) error {
@@ -192,9 +228,55 @@ func renderSQLStatement(a *app.App, s api.SQLStatement, asyncHint bool) error {
 		a.Output.Text("Error:        %s", *s.Error)
 	}
 	if asyncHint && s.Status == "pending" {
-		a.Output.Text("Poll: agiler sql get %s %s", projectIDFromContext(), s.ID)
+		a.Output.Text("Poll: agiler sql get <project> %s", s.ID)
+	}
+	if len(s.Rows) > 0 {
+		renderRowsTable(a, s.Columns, s.Rows)
 	}
 	return nil
+}
+
+func renderRowsTable(a *app.App, columns []string, rows [][]any) {
+	if len(columns) == 0 {
+		return
+	}
+	tableRows := make([][]string, len(rows))
+	for i, row := range rows {
+		cells := make([]string, len(columns))
+		for j := range columns {
+			if j < len(row) {
+				cells[j] = formatCell(row[j])
+			}
+		}
+		tableRows[i] = cells
+	}
+	a.Output.Table(columns, tableRows)
+}
+
+// formatCell renders a single JSON value as a string for tabular output.
+// Numbers stay numeric, nil becomes empty, everything else uses fmt.
+func formatCell(v any) string {
+	if v == nil {
+		return ""
+	}
+	switch x := v.(type) {
+	case string:
+		return x
+	case float64:
+		// JSON numbers decode as float64; print integers without decimal.
+		if x == float64(int64(x)) {
+			return fmt.Sprintf("%d", int64(x))
+		}
+		return fmt.Sprintf("%g", x)
+	case bool:
+		return fmt.Sprintf("%t", x)
+	default:
+		b, err := json.Marshal(x)
+		if err != nil {
+			return fmt.Sprintf("%v", x)
+		}
+		return string(b)
+	}
 }
 
 func renderSQLHistory(a *app.App, items []api.SQLStatement) {
@@ -235,25 +317,4 @@ func truncateForTable(s string, n int) string {
 		return s
 	}
 	return s[:n-1] + "…"
-}
-
-// projectIDFromContext is a placeholder for the optional "show next-step
-// hint" message after an async submit. We can't recover the project id
-// from the API response (the resource is identified by URL), so we leave
-// a stub the user can replace with their project name. Doing nothing here
-// at all (or printing the Location header) is also fine; this is purely a
-// UX nicety.
-func projectIDFromContext() string {
-	return "<project>"
-}
-
-// formatStatementTime is a small helper used by callers that need to print
-// time.Time values in the same format the API uses on the wire. The CLI's
-// renderers consume strings directly, so this is rarely needed today; it
-// keeps the door open for the SPA-side renderer adopting the same shape.
-func formatStatementTime(t time.Time) string {
-	if t.IsZero() {
-		return ""
-	}
-	return t.UTC().Format(time.RFC3339Nano)
 }
