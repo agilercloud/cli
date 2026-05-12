@@ -101,6 +101,48 @@ type Status struct {
 	Status string `json:"status"`
 }
 
+// SelfUser is the response from GET /v1/users/me. EffectiveScopes lists
+// the permission scopes the caller's credentials currently grant (with
+// implication rules already resolved server-side, minus the synthetic
+// session_only scope).
+type SelfUser struct {
+	ID              string   `json:"id"`
+	CreatedAt       string   `json:"created_at"`
+	Email           string   `json:"email"`
+	Name            string   `json:"name"`
+	SiteAdmin       bool     `json:"site_admin,omitempty"`
+	EffectiveScopes []string `json:"effective_scopes"`
+}
+
+// Billing is the response from GET /v1/users/me/billing.
+type Billing struct {
+	Balance        float64 `json:"balance"`
+	Currency       string  `json:"currency"`
+	Plan           string  `json:"plan,omitempty"`
+	PaymentMethod  string  `json:"payment_method,omitempty"`
+	AutoPay        bool    `json:"auto_pay"`
+	UpdateRequired bool    `json:"update_required"`
+}
+
+// BillingTransaction is one row in GET /v1/users/me/billing/transactions.
+type BillingTransaction struct {
+	ID          string  `json:"id"`
+	CreatedAt   string  `json:"created_at"`
+	Description string  `json:"description"`
+	Amount      float64 `json:"amount"`
+	Currency    string  `json:"currency"`
+	Kind        string  `json:"kind,omitempty"`
+}
+
+// Notification is one row in GET /v1/users/me/notifications.
+type Notification struct {
+	ID        string `json:"id"`
+	CreatedAt string `json:"created_at"`
+	ReadAt    string `json:"read_at,omitempty"`
+	Subject   string `json:"subject"`
+	Body      string `json:"body,omitempty"`
+}
+
 // SQLStatement is the shape returned by the SQL execution endpoints:
 // POST /v1/projects/{id}/sql/statements, GET /v1/projects/{id}/sql/statements,
 // and GET /v1/projects/{id}/sql/statements/{stmtId}. The Rows field is the

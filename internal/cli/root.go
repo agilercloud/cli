@@ -80,6 +80,9 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.AddCommand(newRuntimesCmd(a))
 	root.AddCommand(newRegionsCmd(a))
 	root.AddCommand(newRulesCmd(a))
+	root.AddCommand(newWhoamiCmd(a))
+	root.AddCommand(newBillingCmd(a))
+	root.AddCommand(newNotificationsCmd(a))
 	root.AddCommand(newVersionCmd(a))
 	root.AddCommand(newUpgradeCmd(a))
 
