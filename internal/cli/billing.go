@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
@@ -19,13 +21,13 @@ func newBillingCmd(a *app.App) *cobra.Command {
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "status",
-		Short: "Show current balance, plan, and payment posture",
+		Short: "Show card on file, monthly budget, and update posture",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var result api.Billing
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/users/me/billing", nil, &result); err != nil {
+			result, err := a.API.GetBilling(cmd.Context())
+			if err != nil {
 				return err
 			}
-			return renderBillingStatus(a.Output, result)
+			return renderBillingStatus(a.Output, *result)
 		},
 	})
 
@@ -33,11 +35,11 @@ func newBillingCmd(a *app.App) *cobra.Command {
 		Use:   "transactions",
 		Short: "List recent account transactions",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var result []api.BillingTransaction
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/users/me/billing/transactions", nil, &result); err != nil {
+			months, err := a.API.ListBillingTransactions(cmd.Context())
+			if err != nil {
 				return err
 			}
-			renderBillingTransactions(a.Output, result)
+			renderBillingTransactions(a.Output, months)
 			return nil
 		},
 	})
@@ -49,8 +51,7 @@ func newBillingCmd(a *app.App) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			outputPath, _ := cmd.Flags().GetString("output")
-			path := fmt.Sprintf("/v1/users/me/billing/statements/%s", args[0])
-			resp, err := a.API.Do(cmd.Context(), "GET", path, nil)
+			resp, err := a.API.GetBillingStatement(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -88,6 +89,9 @@ func newBillingCmd(a *app.App) *cobra.Command {
 	return cmd
 }
 
+// renderBillingStatus prints the fields the public spec actually
+// returns: cardholder name, card brand/last4/expiry, monthly budget
+// and budget-alert thresholds, and the forced-update flag.
 func renderBillingStatus(w *output.Writer, b api.Billing) error {
 	if w.IsTabular() {
 		return tabularUnsupportedErr(w)
@@ -96,34 +100,56 @@ func renderBillingStatus(w *output.Writer, b api.Billing) error {
 		w.Structured(b)
 		return nil
 	}
-	w.Text("Balance:  %.2f %s", b.Balance, b.Currency)
-	if b.Plan != "" {
-		w.Text("Plan:     %s", b.Plan)
+	if b.Name != "" {
+		w.Text("Name:           %s", b.Name)
 	}
-	if b.PaymentMethod != "" {
-		w.Text("Method:   %s", b.PaymentMethod)
+	if b.Brand != "" || b.Last4 != "" {
+		w.Text("Card:           %s ending in %s (exp %02d/%d)", b.Brand, b.Last4, b.ExpMonth, b.ExpYear)
 	}
-	w.Text("Auto-pay: %s", boolYesNo(b.AutoPay))
-	if b.UpdateRequired {
-		w.Text("Update required: yes — please review billing settings in the web app.")
+	if b.MonthlyBudget > 0 {
+		w.Text("Monthly budget: $%d", b.MonthlyBudget)
+	}
+	if len(b.BudgetAlerts) > 0 {
+		alerts := make([]string, len(b.BudgetAlerts))
+		for i, a := range b.BudgetAlerts {
+			alerts[i] = fmt.Sprintf("%d%%", a)
+		}
+		w.Text("Budget alerts:  %s", strings.Join(alerts, ", "))
+	}
+	w.Text("Budget stop:    %s", boolYesNo(b.BudgetStop))
+	if b.ForceUpdate != nil {
+		w.Text("Update required: yes — please review billing settings in the web app (since %s).",
+			b.ForceUpdate.Format(time.RFC3339))
 	}
 	return nil
 }
 
-func renderBillingTransactions(w *output.Writer, txs []api.BillingTransaction) {
+// renderBillingTransactions flattens months into rows for tabular text/CSV/TSV
+// output. Structured output preserves the grouped shape.
+func renderBillingTransactions(w *output.Writer, months []api.BillingMonth) {
 	if w.IsStructured() {
-		w.Structured(txs)
+		w.Structured(months)
 		return
 	}
-	if len(txs) == 0 {
+	if len(months) == 0 {
 		w.Text("No transactions.")
 		return
 	}
-	rows := make([][]string, len(txs))
-	for i, t := range txs {
-		rows[i] = []string{t.CreatedAt, t.Kind, t.Description, fmt.Sprintf("%.2f %s", t.Amount, t.Currency)}
+	var rows [][]string
+	for _, m := range months {
+		for _, t := range m.Tx {
+			rows = append(rows, []string{
+				t.CreatedAt.Format(time.RFC3339),
+				t.Description,
+				fmt.Sprintf("$%d", t.Amount),
+			})
+		}
 	}
-	w.Table([]string{"DATE", "KIND", "DESCRIPTION", "AMOUNT"}, rows)
+	if len(rows) == 0 {
+		w.Text("No transactions.")
+		return
+	}
+	w.Table([]string{"DATE", "DESCRIPTION", "AMOUNT"}, rows)
 }
 
 func boolYesNo(b bool) string {

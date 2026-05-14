@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 
 	"github.com/agilercloud/cli/internal/api"
@@ -22,8 +20,8 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 		Short: "List environment variables",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result []api.Variable
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/variables", args[0]), nil, &result); err != nil {
+			result, err := a.API.ListVariables(cmd.Context(), args[0])
+			if err != nil {
 				return err
 			}
 			renderVariablesList(a.Output, result)
@@ -40,31 +38,34 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 
 			// Resolve to an existing variable if one with this name exists,
 			// so `variables set` is an upsert across CLI sessions.
-			var existing []api.Variable
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/variables", args[0]), nil, &existing); err != nil {
+			existing, err := a.API.ListVariables(cmd.Context(), args[0])
+			if err != nil {
 				return err
 			}
 			var variableId string
 			for _, v := range existing {
 				if v.Name == args[1] {
-					variableId = v.ID
+					variableId = v.Id.String()
 					break
 				}
 			}
 
-			body := map[string]any{
-				"name":      args[1],
-				"value":     args[2],
-				"sensitive": sensitive,
-			}
-			data, _ := json.Marshal(body)
-
 			if variableId == "" {
-				if err := a.API.DoJSONIdempotent(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/variables", args[0]), bytes.NewReader(data), nil); err != nil {
+				if _, err := a.API.CreateVariable(cmd.Context(), args[0], api.CreateVariableInput{
+					Name:      args[1],
+					Value:     args[2],
+					Sensitive: &sensitive,
+				}); err != nil {
 					return err
 				}
 			} else {
-				if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s/variables/%s", args[0], variableId), bytes.NewReader(data), nil); err != nil {
+				name := args[1]
+				value := args[2]
+				if err := a.API.UpdateVariable(cmd.Context(), args[0], variableId, api.UpdateVariableInput{
+					Name:      &name,
+					Value:     &value,
+					Sensitive: &sensitive,
+				}); err != nil {
 					return err
 				}
 			}
@@ -80,7 +81,7 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 		Short: "Delete an environment variable",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DoJSON(cmd.Context(), "DELETE", fmt.Sprintf("/v1/projects/%s/variables/%s", args[0], args[1]), nil, nil); err != nil {
+			if err := a.API.DeleteVariable(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			a.Output.Text("Variable deleted.")
@@ -106,7 +107,7 @@ func renderVariablesList(w *output.Writer, vars []api.Variable) {
 		if v.Value != nil {
 			value = *v.Value
 		}
-		rows[i] = []string{v.ID, v.Name, fmt.Sprintf("%t", v.Sensitive), value}
+		rows[i] = []string{v.Id.String(), v.Name, fmt.Sprintf("%t", v.Sensitive), value}
 	}
 	w.Table([]string{"ID", "NAME", "SENSITIVE", "VALUE"}, rows)
 }

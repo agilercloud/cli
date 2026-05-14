@@ -1,10 +1,7 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"os/signal"
 	"time"
@@ -44,8 +41,8 @@ func newProjectsListCmd(a *app.App) *cobra.Command {
 		Use:   "list",
 		Short: "List all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result []api.Project
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/projects", nil, &result); err != nil {
+			result, err := a.API.ListProjects(cmd.Context())
+			if err != nil {
 				return err
 			}
 			renderProjectsList(a.Output, result)
@@ -60,11 +57,11 @@ func newProjectsGetCmd(a *app.App) *cobra.Command {
 		Short: "Get project details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result api.Project
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s", args[0]), nil, &result); err != nil {
+			result, err := a.API.GetProject(cmd.Context(), args[0])
+			if err != nil {
 				return err
 			}
-			return renderProjectDetail(a.Output, result)
+			return renderProjectDetail(a.Output, *result)
 		},
 	}
 }
@@ -76,14 +73,11 @@ func newProjectsCreateCmd(a *app.App) *cobra.Command {
 		Use:   "create",
 		Short: "Create a new project",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			body := map[string]any{
-				"name":    name,
-				"region":  region,
-				"runtime": runtime,
-			}
-			data, _ := json.Marshal(body)
-
-			if err := a.API.DoJSONIdempotent(cmd.Context(), "POST", "/v1/projects", bytes.NewReader(data), nil); err != nil {
+			if _, err := a.API.CreateProject(cmd.Context(), api.CreateProjectInput{
+				Name:    name,
+				Region:  region,
+				Runtime: runtime,
+			}); err != nil {
 				return err
 			}
 			a.Output.Text("Project created.")
@@ -105,27 +99,30 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 		Short: "Update a project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			body := map[string]any{}
+			var in api.UpdateProjectInput
+			touched := false
 
 			if cmd.Flags().Changed("name") {
 				v, _ := cmd.Flags().GetString("name")
-				body["name"] = v
+				in.Name = &v
+				touched = true
 			}
 			if cmd.Flags().Changed("active") {
 				v, _ := cmd.Flags().GetBool("active")
-				body["active"] = v
+				in.Active = &v
+				touched = true
 			}
 			if cmd.Flags().Changed("runtime") {
 				v, _ := cmd.Flags().GetString("runtime")
-				body["runtime"] = v
+				in.Runtime = &v
+				touched = true
 			}
 
-			if len(body) == 0 {
+			if !touched {
 				return fmt.Errorf("no flags provided; use --name, --active, or --runtime")
 			}
 
-			data, _ := json.Marshal(body)
-			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s", args[0]), bytes.NewReader(data), nil); err != nil {
+			if err := a.API.UpdateProject(cmd.Context(), args[0], in); err != nil {
 				return err
 			}
 			a.Output.Text("Project updated.")
@@ -144,7 +141,7 @@ func newProjectsDeleteCmd(a *app.App) *cobra.Command {
 		Short: "Delete a project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DoJSON(cmd.Context(), "DELETE", fmt.Sprintf("/v1/projects/%s", args[0]), nil, nil); err != nil {
+			if err := a.API.DeleteProject(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Project deleted.")
@@ -160,30 +157,31 @@ func newUsageCmd(a *app.App) *cobra.Command {
 		Long:  "Fetch project usage bucketed by --granularity (hour|day|week|month). --since/--until accept RFC3339 timestamps; --limit caps page size.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			limit, _ := cmd.Flags().GetString("limit")
-			since, _ := cmd.Flags().GetString("since")
-			until, _ := cmd.Flags().GetString("until")
-			granularity, _ := cmd.Flags().GetString("granularity")
-
-			params := url.Values{}
-			if limit != "" {
-				params.Set("limit", limit)
+			q := api.UsageQuery{}
+			if v, _ := cmd.Flags().GetString("limit"); v != "" {
+				if n, err := parseUintFlag(v); err == nil {
+					q.Limit = n
+				}
 			}
-			if since != "" {
-				params.Set("since", since)
+			if v, _ := cmd.Flags().GetString("since"); v != "" {
+				t, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					return fmt.Errorf("invalid --since: %w", err)
+				}
+				q.Since = t
 			}
-			if until != "" {
-				params.Set("until", until)
+			if v, _ := cmd.Flags().GetString("until"); v != "" {
+				t, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					return fmt.Errorf("invalid --until: %w", err)
+				}
+				q.Until = t
 			}
-			if granularity != "" {
-				params.Set("granularity", granularity)
+			if v, _ := cmd.Flags().GetString("granularity"); v != "" {
+				q.Granularity = api.UsageGranularity(v)
 			}
-			path := fmt.Sprintf("/v1/projects/%s/usage", args[0])
-			if encoded := params.Encode(); encoded != "" {
-				path = path + "?" + encoded
-			}
-			var result []api.UsageRecord
-			if err := a.API.DoJSON(cmd.Context(), "GET", path, nil, &result); err != nil {
+			result, err := a.API.GetProjectUsage(cmd.Context(), args[0], q)
+			if err != nil {
 				return err
 			}
 			renderUsageList(a.Output, result)
@@ -203,30 +201,31 @@ func newLogsCmd(a *app.App) *cobra.Command {
 		Short: "Get project logs",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			limit, _ := cmd.Flags().GetString("limit")
-			since, _ := cmd.Flags().GetString("since")
-			until, _ := cmd.Flags().GetString("until")
-			q, _ := cmd.Flags().GetString("q")
-
-			params := url.Values{}
-			if limit != "" {
-				params.Set("limit", limit)
+			q := api.LogsQuery{}
+			if v, _ := cmd.Flags().GetString("limit"); v != "" {
+				if n, err := parseUintFlag(v); err == nil {
+					q.Limit = n
+				}
 			}
-			if since != "" {
-				params.Set("since", since)
+			if v, _ := cmd.Flags().GetString("since"); v != "" {
+				t, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					return fmt.Errorf("invalid --since: %w", err)
+				}
+				q.Since = t
 			}
-			if until != "" {
-				params.Set("until", until)
+			if v, _ := cmd.Flags().GetString("until"); v != "" {
+				t, err := time.Parse(time.RFC3339, v)
+				if err != nil {
+					return fmt.Errorf("invalid --until: %w", err)
+				}
+				q.Until = t
 			}
-			if q != "" {
-				params.Set("q", q)
+			if v, _ := cmd.Flags().GetString("q"); v != "" {
+				q.Query = v
 			}
-			path := fmt.Sprintf("/v1/projects/%s/logs", args[0])
-			if encoded := params.Encode(); encoded != "" {
-				path = path + "?" + encoded
-			}
-			var result []api.LogEntry
-			if err := a.API.DoJSON(cmd.Context(), "GET", path, nil, &result); err != nil {
+			result, err := a.API.GetProjectLogs(cmd.Context(), args[0], q)
+			if err != nil {
 				return err
 			}
 			renderLogsList(a.Output, result)
@@ -262,15 +261,16 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 			defer signal.Stop(sigCh)
 
 			for {
-				var result []api.LogEntry
-				path := fmt.Sprintf("/v1/projects/%s/logs?since=%s&limit=1000",
-					args[0], url.QueryEscape(since.Format(time.RFC3339Nano)))
-				if err := a.API.DoJSON(cmd.Context(), "GET", path, nil, &result); err != nil {
+				result, err := a.API.GetProjectLogs(cmd.Context(), args[0], api.LogsQuery{
+					Since: since,
+					Limit: 1000,
+				})
+				if err != nil {
 					return err
 				}
 
 				for _, l := range result {
-					key := l.RequestID + l.Message
+					key := l.RequestId.String() + l.Message
 					if _, dup := seen[key]; dup {
 						continue
 					}
@@ -283,13 +283,11 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 					case a.Output.IsStructured():
 						a.Output.Structured(l)
 					default:
-						a.Output.Text("[%s] %s: %s", l.Timestamp, l.Priority, l.Message)
+						a.Output.Text("[%s] %s: %s", l.Timestamp.Format(time.RFC3339), l.Priority, l.Message)
 					}
 
-					if t, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
-						if t.After(since) {
-							since = t.Add(time.Millisecond)
-						}
+					if l.Timestamp.After(since) {
+						since = l.Timestamp.Add(time.Millisecond)
 					}
 				}
 
@@ -327,22 +325,20 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 		Short: "Search project logs",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			limit, _ := cmd.Flags().GetString("limit")
-			if limit == "" {
-				limit = "100"
+			q := api.LogsQuery{Query: args[1], Limit: 100}
+
+			if v, _ := cmd.Flags().GetString("limit"); v != "" {
+				if n, err := parseUintFlag(v); err == nil {
+					q.Limit = n
+				}
 			}
-
-			params := url.Values{}
-			params.Set("q", args[1])
-			params.Set("limit", limit)
-
 			if cmd.Flags().Changed("since") {
 				v, _ := cmd.Flags().GetString("since")
 				t, err := parseTimeFlag(v, a.Clock.Now())
 				if err != nil {
 					return fmt.Errorf("invalid --since: %w", err)
 				}
-				params.Set("since", t.Format(time.RFC3339Nano))
+				q.Since = t
 			}
 			if cmd.Flags().Changed("until") {
 				v, _ := cmd.Flags().GetString("until")
@@ -350,12 +346,11 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("invalid --until: %w", err)
 				}
-				params.Set("until", t.Format(time.RFC3339Nano))
+				q.Until = t
 			}
 
-			var result []api.LogEntry
-			path := fmt.Sprintf("/v1/projects/%s/logs?%s", args[0], params.Encode())
-			if err := a.API.DoJSON(cmd.Context(), "GET", path, nil, &result); err != nil {
+			result, err := a.API.GetProjectLogs(cmd.Context(), args[0], q)
+			if err != nil {
 				return err
 			}
 			renderLogsList(a.Output, result)
@@ -366,6 +361,20 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 	cmd.Flags().String("since", "", "Start time (RFC3339 or duration like 1h, 24h)")
 	cmd.Flags().String("until", "", "End time (RFC3339 or duration like 1h, 24h)")
 	return cmd
+}
+
+// parseUintFlag parses a string flag as a non-negative int.
+// Empty / unparseable values return 0 so the caller leaves the
+// corresponding query field unset.
+func parseUintFlag(s string) (int, error) {
+	var n int
+	if _, err := fmt.Sscanf(s, "%d", &n); err != nil {
+		return 0, err
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("must be non-negative")
+	}
+	return n, nil
 }
 
 // --- Renderers ---
@@ -381,12 +390,12 @@ func renderProjectsList(w *output.Writer, ps []api.Project) {
 	}
 	rows := make([][]string, len(ps))
 	for i, p := range ps {
-		rows[i] = []string{p.ID, p.Name, p.Status, p.Region, p.Runtime}
+		rows[i] = []string{p.Id.String(), p.Name, p.Status, p.Region, p.Runtime}
 	}
 	w.Table([]string{"ID", "NAME", "STATUS", "REGION", "RUNTIME"}, rows)
 }
 
-func renderProjectDetail(w *output.Writer, p api.Project) error {
+func renderProjectDetail(w *output.Writer, p api.ProjectDetail) error {
 	if w.IsTabular() {
 		return tabularUnsupportedErr(w)
 	}
@@ -395,21 +404,21 @@ func renderProjectDetail(w *output.Writer, p api.Project) error {
 		return nil
 	}
 	if w.IsQuiet() {
-		w.Text("%s", p.ID)
+		w.Text("%s", p.Id)
 		return nil
 	}
-	w.Text("ID:        %s", p.ID)
+	w.Text("ID:        %s", p.Id)
 	w.Text("Name:      %s", p.Name)
 	w.Text("Status:    %s", p.Status)
 	w.Text("Active:    %t", p.Active)
 	w.Text("Region:    %s", p.Region)
 	w.Text("Runtime:   %s", p.Runtime)
-	w.Text("Created:   %s", p.CreatedAt)
-	w.Text("Updated:   %s", p.UpdatedAt)
+	w.Text("Created:   %s", p.CreatedAt.Format(time.RFC3339))
+	w.Text("Updated:   %s", p.UpdatedAt.Format(time.RFC3339))
 	return nil
 }
 
-func renderUsageList(w *output.Writer, us []api.UsageRecord) {
+func renderUsageList(w *output.Writer, us []api.Usage) {
 	if w.IsStructured() {
 		w.Structured(us)
 		return
@@ -421,13 +430,13 @@ func renderUsageList(w *output.Writer, us []api.UsageRecord) {
 	rows := make([][]string, len(us))
 	for i, u := range us {
 		rows[i] = []string{
-			u.EventsAt,
+			u.EventsAt.Format(time.RFC3339),
 			fmt.Sprintf("%d", u.RequestsTotal),
 			fmt.Sprintf("%d", u.Responses2xx),
 			fmt.Sprintf("%d", u.Responses4xx),
 			fmt.Sprintf("%d", u.Responses5xx),
-			fmt.Sprintf("%v", u.DurationAverage),
-			fmt.Sprintf("%v", u.DatatransferOut),
+			fmt.Sprintf("%d", u.DurationAverage),
+			fmt.Sprintf("%d", u.DatatransferOut),
 		}
 	}
 	w.Table(
@@ -446,7 +455,7 @@ func renderLogsList(w *output.Writer, ls []api.LogEntry) {
 		return
 	}
 	for _, l := range ls {
-		w.Text("[%s] %s: %s", l.Timestamp, l.Priority, l.Message)
+		w.Text("[%s] %s: %s", l.Timestamp.Format(time.RFC3339), l.Priority, l.Message)
 	}
 }
 

@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/output"
+	"github.com/google/uuid"
 )
 
 var update = flag.Bool("update", false, "update golden files")
@@ -38,10 +40,17 @@ func assertRender(t *testing.T, name string, render func(*output.Writer), format
 	}
 }
 
+// Helpers for building test fixtures with the wire-shape types.
+var (
+	testTime = time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	testID1  = uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	testID2  = uuid.MustParse("00000000-0000-0000-0000-000000000002")
+)
+
 func TestRenderProjectsList(t *testing.T) {
 	data := []api.Project{
-		{ID: "p1", Name: "alpha", Status: "running", Region: "eu", Runtime: "node22"},
-		{ID: "p2", Name: "beta-service", Status: "stopped", Region: "us", Runtime: "python312"},
+		{Id: testID1, Name: "alpha", Status: "running", Region: "eu", Runtime: "node22", CreatedAt: testTime, UpdatedAt: testTime},
+		{Id: testID2, Name: "beta-service", Status: "stopped", Region: "us", Runtime: "python312", CreatedAt: testTime, UpdatedAt: testTime},
 	}
 	assertRender(t, "projects_list_text.txt",
 		func(w *output.Writer) { renderProjectsList(w, data) }, output.FormatText, false)
@@ -54,10 +63,15 @@ func TestRenderProjectsList(t *testing.T) {
 }
 
 func TestRenderProjectDetail(t *testing.T) {
-	data := api.Project{
-		ID: "p1", Name: "alpha", Status: "running", Active: true,
-		Region: "eu", Runtime: "node22",
-		CreatedAt: "2025-01-01", UpdatedAt: "2025-02-01",
+	data := api.ProjectDetail{
+		Id:        testID1,
+		Name:      "alpha",
+		Status:    "running",
+		Active:    true,
+		Region:    "eu",
+		Runtime:   "node22",
+		CreatedAt: testTime,
+		UpdatedAt: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 	}
 	assertRender(t, "project_detail_text.txt",
 		func(w *output.Writer) { _ = renderProjectDetail(w, data) }, output.FormatText, false)
@@ -66,7 +80,7 @@ func TestRenderProjectDetail(t *testing.T) {
 }
 
 func TestRenderProjectDetailTabularError(t *testing.T) {
-	data := api.Project{ID: "p1", Name: "alpha"}
+	data := api.ProjectDetail{Id: testID1, Name: "alpha"}
 	for _, f := range []output.Format{output.FormatCSV, output.FormatTSV} {
 		w := output.New(f, false, &bytes.Buffer{}, &bytes.Buffer{})
 		err := renderProjectDetail(w, data)
@@ -82,8 +96,8 @@ func TestRenderProjectDetailTabularError(t *testing.T) {
 
 func TestRenderRegionsList(t *testing.T) {
 	data := []api.Region{
-		{ID: "eu-west", Description: "Western Europe"},
-		{ID: "us-east", Description: "Eastern US"},
+		{Id: "eu-west", Description: "Western Europe"},
+		{Id: "us-east", Description: "Eastern US"},
 	}
 	assertRender(t, "regions_list_text.txt",
 		func(w *output.Writer) { renderRegionsList(w, data) }, output.FormatText, false)
@@ -92,10 +106,10 @@ func TestRenderRegionsList(t *testing.T) {
 }
 
 func TestRenderRuntimesList(t *testing.T) {
-	deprecated := "2025-01-01"
+	deprecated := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	data := []api.Runtime{
-		{ID: "node22", Description: "Node 22"},
-		{ID: "node18", Description: "Node 18", DeprecatedAt: &deprecated},
+		{Id: "node22", Description: "Node 22"},
+		{Id: "node18", Description: "Node 18", DeprecatedAt: &deprecated},
 	}
 	assertRender(t, "runtimes_list_text.txt",
 		func(w *output.Writer) { renderRuntimesList(w, data) }, output.FormatText, false)
@@ -103,8 +117,8 @@ func TestRenderRuntimesList(t *testing.T) {
 
 func TestRenderFilesList(t *testing.T) {
 	data := []api.File{
-		{Name: "index.js", Path: "/index.js", Size: 1234, ModifiedAt: "2025-01-01T00:00:00Z", IsDir: false},
-		{Name: "src", Path: "/src", Size: 0, ModifiedAt: "2025-01-01T00:00:00Z", IsDir: true},
+		{Name: "index.js", Path: "/index.js", Size: 1234, ModifiedAt: testTime, IsDir: false},
+		{Name: "src", Path: "/src", Size: 0, ModifiedAt: testTime, IsDir: true},
 	}
 	assertRender(t, "files_list_text.txt",
 		func(w *output.Writer) { renderFilesList(w, data) }, output.FormatText, false)
@@ -115,8 +129,8 @@ func TestRenderFilesList(t *testing.T) {
 func TestRenderVariablesList(t *testing.T) {
 	v := "3000"
 	data := []api.Variable{
-		{ID: "v1", Name: "DATABASE_URL", Sensitive: true, Value: nil},
-		{ID: "v2", Name: "PORT", Sensitive: false, Value: &v},
+		{Id: testID1, Name: "DATABASE_URL", Sensitive: true, Value: nil},
+		{Id: testID2, Name: "PORT", Sensitive: false, Value: &v},
 	}
 	assertRender(t, "variables_list_text.txt",
 		func(w *output.Writer) { renderVariablesList(w, data) }, output.FormatText, false)
@@ -124,8 +138,8 @@ func TestRenderVariablesList(t *testing.T) {
 
 func TestRenderDomainsList(t *testing.T) {
 	data := []api.Domain{
-		{ID: "d1", Name: "example.com"},
-		{ID: "d2", Name: "api.example.com"},
+		{Id: testID1, Name: "example.com"},
+		{Id: testID2, Name: "api.example.com"},
 	}
 	assertRender(t, "domains_list_text.txt",
 		func(w *output.Writer) { renderDomainsList(w, data) }, output.FormatText, false)
@@ -134,8 +148,9 @@ func TestRenderDomainsList(t *testing.T) {
 }
 
 func TestRenderBackupsList(t *testing.T) {
+	size := 123
 	data := []api.Backup{
-		{ID: "b1", Status: "done", CreatedAt: "2025-01-01", Automatic: true, Size: 123},
+		{Id: testID1, Status: "done", CreatedAt: testTime, Automatic: true, Size: &size},
 	}
 	assertRender(t, "backups_list_text.txt",
 		func(w *output.Writer) { renderBackupsList(w, data) }, output.FormatText, false)
@@ -143,7 +158,7 @@ func TestRenderBackupsList(t *testing.T) {
 
 func TestRenderLogsList(t *testing.T) {
 	data := []api.LogEntry{
-		{Timestamp: "2025-01-01T00:00:00Z", Priority: "INFO", Message: "hello"},
+		{Timestamp: testTime, Priority: "INFO", Message: "hello", RequestId: testID1},
 	}
 	assertRender(t, "logs_list_text.txt",
 		func(w *output.Writer) { renderLogsList(w, data) }, output.FormatText, false)
@@ -152,8 +167,8 @@ func TestRenderLogsList(t *testing.T) {
 }
 
 func TestRenderUsageList(t *testing.T) {
-	data := []api.UsageRecord{
-		{EventsAt: "2025-01-01", RequestsTotal: 100, Responses2xx: 90, Responses4xx: 5, Responses5xx: 5, DurationAverage: 12.3, DatatransferOut: 0.5},
+	data := []api.Usage{
+		{EventsAt: testTime, RequestsTotal: 100, Responses2xx: 90, Responses4xx: 5, Responses5xx: 5, DurationAverage: 12, DatatransferOut: 1},
 	}
 	assertRender(t, "usage_list_text.txt",
 		func(w *output.Writer) { renderUsageList(w, data) }, output.FormatText, false)

@@ -3,7 +3,6 @@ package app
 import (
 	"os"
 
-	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/clock"
 	"github.com/agilercloud/cli/internal/fsx"
 	"github.com/agilercloud/cli/internal/output"
@@ -23,6 +22,3 @@ func Wire(version string) (*App, error) {
 		Clock:   clock.Real{},
 	}, nil
 }
-
-// Ensure *api.Client satisfies the APIClient interface.
-var _ APIClient = (*api.Client)(nil)

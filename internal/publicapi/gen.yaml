@@ -1,0 +1,20 @@
+# oapi-codegen config for the Go client of public.json. Consumed by the
+# `make openapi` target via:
+#
+#   go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.7.0 \
+#       -config gen.yaml -o client.gen.go ../../../../platform/api/openapi/public.json
+#
+# Consumed by the agiler CLI (cli/internal/api) when it makes calls
+# against the public developer API at https://api.agiler.io/v1. The
+# spec is reflected from the platform's v1 route table; see the
+# platform `make openapi` target. The package is named `publicapi`
+# to match the spec view (public, internal, router).
+package: publicapi
+output: client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: false
+compatibility:
+  always-prefix-enum-values: false

@@ -1,8 +1,8 @@
-ID:        p1
+ID:        00000000-0000-0000-0000-000000000001
 Name:      alpha
 Status:    running
 Active:    true
 Region:    eu
 Runtime:   node22
-Created:   2025-01-01
-Updated:   2025-02-01
+Created:   2025-01-01T00:00:00Z
+Updated:   2025-02-01T00:00:00Z

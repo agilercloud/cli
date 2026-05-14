@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
@@ -19,8 +19,8 @@ func newRuntimesCmd(a *app.App) *cobra.Command {
 		Use:   "list",
 		Short: "List all runtimes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result []api.Runtime
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/runtimes", nil, &result); err != nil {
+			result, err := a.API.ListRuntimes(cmd.Context())
+			if err != nil {
 				return err
 			}
 			renderRuntimesList(a.Output, result)
@@ -33,11 +33,11 @@ func newRuntimesCmd(a *app.App) *cobra.Command {
 		Short: "Get runtime details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result api.Runtime
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/runtimes/%s", args[0]), nil, &result); err != nil {
+			result, err := a.API.GetRuntime(cmd.Context(), args[0])
+			if err != nil {
 				return err
 			}
-			return renderRuntimeDetail(a.Output, result)
+			return renderRuntimeDetail(a.Output, *result)
 		},
 	})
 
@@ -57,9 +57,9 @@ func renderRuntimesList(w *output.Writer, rs []api.Runtime) {
 	for i, r := range rs {
 		deprecated := ""
 		if r.DeprecatedAt != nil {
-			deprecated = *r.DeprecatedAt
+			deprecated = r.DeprecatedAt.Format(time.RFC3339)
 		}
-		rows[i] = []string{r.ID, r.Description, deprecated}
+		rows[i] = []string{r.Id, r.Description, deprecated}
 	}
 	w.Table([]string{"ID", "DESCRIPTION", "DEPRECATED"}, rows)
 }
@@ -72,12 +72,12 @@ func renderRuntimeDetail(w *output.Writer, r api.Runtime) error {
 		w.Structured(r)
 		return nil
 	}
-	w.Text("ID:          %s", r.ID)
+	w.Text("ID:          %s", r.Id)
 	w.Text("Description: %s", r.Description)
-	w.Text("Created:     %s", r.CreatedAt)
-	w.Text("Updated:     %s", r.UpdatedAt)
+	w.Text("Created:     %s", r.CreatedAt.Format(time.RFC3339))
+	w.Text("Updated:     %s", r.UpdatedAt.Format(time.RFC3339))
 	if r.DeprecatedAt != nil {
-		w.Text("Deprecated:  %s", *r.DeprecatedAt)
+		w.Text("Deprecated:  %s", r.DeprecatedAt.Format(time.RFC3339))
 	}
 	return nil
 }

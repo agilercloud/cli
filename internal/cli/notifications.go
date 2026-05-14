@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
@@ -19,8 +19,8 @@ func newNotificationsCmd(a *app.App) *cobra.Command {
 		Use:   "list",
 		Short: "List notifications",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var result []api.Notification
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/users/me/notifications", nil, &result); err != nil {
+			result, err := a.API.ListNotifications(cmd.Context())
+			if err != nil {
 				return err
 			}
 			renderNotificationsList(a.Output, result)
@@ -33,8 +33,7 @@ func newNotificationsCmd(a *app.App) *cobra.Command {
 		Short: "Delete a notification",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := fmt.Sprintf("/v1/users/me/notifications/%s", args[0])
-			if err := a.API.DoJSON(cmd.Context(), "DELETE", path, nil, nil); err != nil {
+			if err := a.API.DeleteNotification(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Notification deleted.")
@@ -56,11 +55,7 @@ func renderNotificationsList(w *output.Writer, ns []api.Notification) {
 	}
 	rows := make([][]string, len(ns))
 	for i, n := range ns {
-		read := "unread"
-		if n.ReadAt != "" {
-			read = "read"
-		}
-		rows[i] = []string{n.ID, n.CreatedAt, read, n.Subject}
+		rows[i] = []string{n.Id, n.CreatedAt.Format(time.RFC3339), n.Priority, n.Title}
 	}
-	w.Table([]string{"ID", "CREATED", "STATUS", "SUBJECT"}, rows)
+	w.Table([]string{"ID", "CREATED", "PRIORITY", "TITLE"}, rows)
 }

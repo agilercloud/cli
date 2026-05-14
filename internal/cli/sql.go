@@ -1,12 +1,10 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"strings"
 	"time"
 
@@ -49,45 +47,26 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			body := map[string]any{
-				"sql":       query,
-				"read_only": readOnly,
-			}
+			in := api.CreateSQLStatement{Sql: query, ReadOnly: readOnly}
 			if timeout > 0 {
-				body["timeout"] = timeout
+				in.Timeout = &timeout
 			}
-			data, _ := json.Marshal(body)
 
 			projectID := args[0]
-			path := fmt.Sprintf("/v1/projects/%s/sql/statements", projectID)
-			headers := map[string]string{}
-			if async {
-				headers["Prefer"] = "respond-async"
-			}
-			resp, err := a.API.DoRaw(cmd.Context(), http.MethodPost, path, "application/json", headers, bytes.NewReader(data))
+			res, err := a.API.RunSQL(cmd.Context(), projectID, in, async)
 			if err != nil {
 				return err
 			}
 
-			// On 202 the body is the pending metadata; we poll until status
-			// transitions away from pending, then fetch + display.
-			var result api.SQLStatement
-			pending := resp.StatusCode == http.StatusAccepted
-			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-				_ = resp.Body.Close()
-				return fmt.Errorf("decode response: %w", err)
-			}
-			_ = resp.Body.Close()
-
-			if pending {
+			result := res.Statement
+			if res.Pending {
 				final, err := pollUntilDone(cmd.Context(), a, projectID, result.ID)
 				if err != nil {
 					return err
 				}
 				result = final
 			}
-			return renderSQLStatement(a, result, async && pending)
+			return renderSQLStatement(a, result, async && res.Pending)
 		},
 	}
 	cmd.Flags().BoolVar(&readOnly, "read-only", false, "Wrap execution in a read-only transaction")
@@ -104,12 +83,8 @@ func newSQLHistoryCmd(a *app.App) *cobra.Command {
 		Short:   "List recent SQL executions for a project",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := fmt.Sprintf("/v1/projects/%s/sql/statements", args[0])
-			if limit > 0 {
-				path = fmt.Sprintf("%s?limit=%d", path, limit)
-			}
-			var result []api.SQLStatement
-			if err := a.API.DoJSON(cmd.Context(), http.MethodGet, path, nil, &result); err != nil {
+			result, err := a.API.ListSQLStatements(cmd.Context(), args[0], limit)
+			if err != nil {
 				return err
 			}
 			renderSQLHistory(a, result)
@@ -126,12 +101,11 @@ func newSQLGetCmd(a *app.App) *cobra.Command {
 		Short: "Fetch one SQL execution by id (with paginated rows)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := fmt.Sprintf("/v1/projects/%s/sql/statements/%s", args[0], args[1])
-			var result api.SQLStatement
-			if err := a.API.DoJSON(cmd.Context(), http.MethodGet, path, nil, &result); err != nil {
+			result, err := a.API.GetSQLStatement(cmd.Context(), args[0], args[1])
+			if err != nil {
 				return err
 			}
-			return renderSQLStatement(a, result, false)
+			return renderSQLStatement(a, *result, false)
 		},
 	}
 }
@@ -142,8 +116,7 @@ func newSQLDeleteCmd(a *app.App) *cobra.Command {
 		Short: "Delete a statement (cancels SQL if it's still pending)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := fmt.Sprintf("/v1/projects/%s/sql/statements/%s", args[0], args[1])
-			if err := a.API.DoJSON(cmd.Context(), http.MethodDelete, path, nil, nil); err != nil {
+			if err := a.API.DeleteSQLStatement(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			a.Output.Text("Statement deleted.")
@@ -171,23 +144,22 @@ func readSQLQuery(a *app.App, args []string) (string, error) {
 // 10 minutes (well past WorkerTimeout) until status leaves "pending".
 // Returns the final statement; the caller decides how to render it.
 func pollUntilDone(ctx context.Context, a *app.App, projectID, stmtID string) (api.SQLStatement, error) {
-	path := fmt.Sprintf("/v1/projects/%s/sql/statements/%s", projectID, stmtID)
 	deadline := time.Now().Add(10 * time.Minute)
 
 	for {
-		var s api.SQLStatement
-		if err := a.API.DoJSON(ctx, http.MethodGet, path, nil, &s); err != nil {
+		s, err := a.API.GetSQLStatement(ctx, projectID, stmtID)
+		if err != nil {
 			return api.SQLStatement{}, err
 		}
 		if s.Status != "pending" {
-			return s, nil
+			return *s, nil
 		}
 		if time.Now().After(deadline) {
-			return s, fmt.Errorf("timed out waiting for SQL statement to complete")
+			return *s, fmt.Errorf("timed out waiting for SQL statement to complete")
 		}
 		select {
 		case <-ctx.Done():
-			return s, ctx.Err()
+			return *s, ctx.Err()
 		case <-time.After(time.Second):
 		}
 	}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -35,15 +34,6 @@ func newFilesCmd(a *app.App) *cobra.Command {
 	return cmd
 }
 
-func encodeFilePath(p string) string {
-	p = strings.TrimPrefix(p, "/")
-	segments := strings.Split(p, "/")
-	for i, s := range segments {
-		segments[i] = url.PathEscape(s)
-	}
-	return strings.Join(segments, "/")
-}
-
 type syncStats struct {
 	transferred int
 	skipped     int
@@ -54,35 +44,17 @@ func (s *syncStats) print(w *output.Writer) {
 	w.Stderr("%d transferred, %d skipped, %d errors", s.transferred, s.skipped, s.errors)
 }
 
-func listRemoteDir(ctx context.Context, client app.APIClient, projectID, remotePath string) ([]api.File, error) {
-	p := "/v1/projects/" + projectID + "/files"
-	if remotePath != "" {
-		p += "/" + encodeFilePath(remotePath)
-	}
-	var result []api.File
-	if err := client.DoJSON(ctx, "GET", p, nil, &result); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-// shouldSkip returns true if the local file matches the remote size and mtime.
-func shouldSkip(fs fsx.FS, localPath string, remoteSize int64, remoteModifiedAt string) bool {
+// shouldSkip reports whether the local file matches the remote in size
+// and mtime, in which case the transfer can be skipped.
+func shouldSkip(fs fsx.FS, localPath string, remoteSize int, remoteModifiedAt time.Time) bool {
 	info, err := fs.Stat(localPath)
 	if err != nil {
 		return false
 	}
-	if info.Size() != remoteSize {
+	if info.Size() != int64(remoteSize) {
 		return false
 	}
-	t, err := time.Parse(time.RFC3339, remoteModifiedAt)
-	if err != nil {
-		t, err = time.Parse(time.RFC3339Nano, remoteModifiedAt)
-		if err != nil {
-			return false
-		}
-	}
-	return info.ModTime().Unix() == t.Unix()
+	return info.ModTime().Unix() == remoteModifiedAt.Unix()
 }
 
 func remoteParentDir(remotePath string) string {
@@ -96,7 +68,7 @@ func remoteParentDir(remotePath string) string {
 
 // --- Upload ---
 
-func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remotePath, localPath string, overwrite bool) error {
+func uploadSingleFile(ctx context.Context, client *api.Client, projectID, remotePath, localPath string, overwrite bool) error {
 	f, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
@@ -110,14 +82,7 @@ func uploadSingleFile(ctx context.Context, client app.APIClient, projectID, remo
 	if !overwrite {
 		headers["If-None-Match"] = "*"
 	}
-
-	p := "/v1/projects/" + projectID + "/files/" + encodeFilePath(remotePath)
-	resp, err := client.DoRaw(ctx, "PUT", p, "application/octet-stream", headers, f)
-	if err != nil {
-		return err
-	}
-	_ = resp.Body.Close()
-	return nil
+	return client.PutProjectFile(ctx, projectID, remotePath, "application/octet-stream", f, headers)
 }
 
 func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir string, force, overwrite bool, stats *syncStats) error {
@@ -128,7 +93,7 @@ func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir 
 
 	var remoteMap map[string]api.File
 	if !force {
-		remoteEntries, err := listRemoteDir(ctx, a.API, projectID, remoteBase)
+		remoteEntries, err := a.API.ListProjectFiles(ctx, projectID, remoteBase)
 		if err == nil {
 			remoteMap = make(map[string]api.File, len(remoteEntries))
 			for _, e := range remoteEntries {
@@ -202,7 +167,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 
 			if !force {
 				parentDir := remoteParentDir(remotePath)
-				remoteEntries, err := listRemoteDir(ctx, a.API, projectID, parentDir)
+				remoteEntries, err := a.API.ListProjectFiles(ctx, projectID, parentDir)
 				if err == nil {
 					baseName := path.Base(remotePath)
 					for _, re := range remoteEntries {
@@ -231,9 +196,8 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 
 // --- Download ---
 
-func downloadSingleFile(ctx context.Context, client app.APIClient, projectID, remotePath, localPath string) error {
-	p := "/v1/projects/" + projectID + "/files/" + encodeFilePath(remotePath)
-	resp, err := client.Do(ctx, "GET", p, nil)
+func downloadSingleFile(ctx context.Context, client *api.Client, projectID, remotePath, localPath string) error {
+	resp, err := client.GetProjectFile(ctx, projectID, remotePath)
 	if err != nil {
 		return err
 	}
@@ -262,7 +226,7 @@ func downloadSingleFile(ctx context.Context, client app.APIClient, projectID, re
 }
 
 func downloadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir string, force bool, stats *syncStats) error {
-	entries, err := listRemoteDir(ctx, a.API, projectID, remoteBase)
+	entries, err := a.API.ListProjectFiles(ctx, projectID, remoteBase)
 	if err != nil {
 		return err
 	}
@@ -311,7 +275,7 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
 			outputPath, _ := cmd.Flags().GetString("output")
 			force, _ := cmd.Flags().GetBool("force")
 
-			entries, listErr := listRemoteDir(ctx, a.API, projectID, remotePath)
+			entries, listErr := a.API.ListProjectFiles(ctx, projectID, remotePath)
 			isDir := listErr == nil && entries != nil
 
 			if isDir {
@@ -327,8 +291,7 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
 			}
 
 			if outputPath == "" || outputPath == "-" {
-				p := "/v1/projects/" + projectID + "/files/" + encodeFilePath(remotePath)
-				resp, err := a.API.Do(ctx, "GET", p, nil)
+				resp, err := a.API.GetProjectFile(ctx, projectID, remotePath)
 				if err != nil {
 					return err
 				}
@@ -339,7 +302,7 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
 
 			if !force {
 				parentDir := remoteParentDir(remotePath)
-				remoteEntries, err := listRemoteDir(ctx, a.API, projectID, parentDir)
+				remoteEntries, err := a.API.ListProjectFiles(ctx, projectID, parentDir)
 				if err == nil {
 					baseName := path.Base(remotePath)
 					for _, re := range remoteEntries {
@@ -374,12 +337,12 @@ func newFilesListCmd(a *app.App) *cobra.Command {
 		Short: "List files in a project directory",
 		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p := "/v1/projects/" + args[0] + "/files"
+			var sub string
 			if len(args) > 1 {
-				p += "/" + encodeFilePath(args[1])
+				sub = args[1]
 			}
-			var result []api.File
-			if err := a.API.DoJSON(cmd.Context(), "GET", p, nil, &result); err != nil {
+			result, err := a.API.ListProjectFiles(cmd.Context(), args[0], sub)
+			if err != nil {
 				return err
 			}
 			renderFilesList(a.Output, result)
@@ -394,8 +357,7 @@ func newFilesDeleteCmd(a *app.App) *cobra.Command {
 		Short: "Delete a file from a project",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p := "/v1/projects/" + args[0] + "/files/" + encodeFilePath(args[1])
-			if err := a.API.DoJSON(cmd.Context(), "DELETE", p, nil, nil); err != nil {
+			if err := a.API.DeleteProjectFile(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			a.Output.Text("File deleted.")
@@ -404,11 +366,10 @@ func newFilesDeleteCmd(a *app.App) *cobra.Command {
 	}
 }
 
-// projectFileSource returns the canonical X-Move-Source / X-Copy-Source header
-// value for the given project and source path: "{project-id}/{path}" with each
-// path segment percent-encoded.
+// projectFileSource builds the canonical X-Move-Source / X-Copy-Source
+// header value: "{project-id}/{path}" with path segments percent-encoded.
 func projectFileSource(projectID, sourcePath string) string {
-	return projectID + "/" + encodeFilePath(sourcePath)
+	return projectID + "/" + api.EncodeFilePath(sourcePath)
 }
 
 func newFilesMoveCmd(a *app.App) *cobra.Command {
@@ -437,12 +398,12 @@ func newFilesTransferCmd(a *app.App, name, short, sourceHeader, successText stri
 				headers["If-None-Match"] = "*"
 			}
 
-			p := "/v1/projects/" + projectID + "/files/" + encodeFilePath(destination)
-			resp, err := a.API.DoRaw(cmd.Context(), "PUT", p, "", headers, nil)
-			if err != nil {
+			// contentType="" signals the move/copy mode: no body, no
+			// Content-Type. PutProjectFile strips the Content-Type the
+			// generated client would otherwise force.
+			if err := a.API.PutProjectFile(cmd.Context(), projectID, destination, "", nil, headers); err != nil {
 				return err
 			}
-			_ = resp.Body.Close()
 			a.Output.Text(successText)
 			return nil
 		},
@@ -475,7 +436,7 @@ func renderFilesList(w *output.Writer, result []api.File) {
 		rows[i] = []string{
 			name,
 			fmt.Sprintf("%d", f.Size),
-			f.ModifiedAt,
+			f.ModifiedAt.Format(time.RFC3339),
 		}
 	}
 	w.Table([]string{"NAME", "SIZE", "MODIFIED"}, rows)

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"strings"
+	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
@@ -17,11 +18,11 @@ func newWhoamiCmd(a *app.App) *cobra.Command {
 			"plus the effective permission scopes those credentials grant. " +
 			"Useful for diagnosing 403s — if a command fails with 'forbidden', this lists which scopes the key holds.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			var result api.SelfUser
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/users/me", nil, &result); err != nil {
+			result, err := a.API.GetSelfUser(cmd.Context())
+			if err != nil {
 				return err
 			}
-			return renderWhoami(a.Output, result)
+			return renderWhoami(a.Output, *result)
 		},
 	}
 }
@@ -36,11 +37,8 @@ func renderWhoami(w *output.Writer, u api.SelfUser) error {
 	}
 	w.Text("User:    %s", u.Email)
 	w.Text("Name:    %s", u.Name)
-	w.Text("ID:      %s", u.ID)
-	w.Text("Created: %s", u.CreatedAt)
-	if u.SiteAdmin {
-		w.Text("Site admin: yes")
-	}
+	w.Text("ID:      %s", u.Id)
+	w.Text("Created: %s", u.CreatedAt.Format(time.RFC3339))
 	if len(u.EffectiveScopes) == 0 {
 		w.Text("Scopes:  (none)")
 	} else {

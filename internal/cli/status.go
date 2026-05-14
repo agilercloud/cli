@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
 	"github.com/spf13/cobra"
 )
@@ -13,8 +12,8 @@ func newStatusCmd(a *app.App) *cobra.Command {
 		Use:   "status",
 		Short: "Check API status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result api.Status
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/status", nil, &result); err != nil {
+			result, err := a.API.GetStatus(cmd.Context())
+			if err != nil {
 				return fmt.Errorf("status check failed: %w", err)
 			}
 

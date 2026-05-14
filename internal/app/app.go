@@ -4,25 +4,14 @@
 package app
 
 import (
-	"context"
 	"io"
-	"net/http"
 
+	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/clock"
 	"github.com/agilercloud/cli/internal/config"
 	"github.com/agilercloud/cli/internal/fsx"
 	"github.com/agilercloud/cli/internal/output"
 )
-
-// APIClient is the subset of *api.Client that CLI commands call.
-// Defined at the consumer side so tests can supply fakes without importing
-// the concrete type.
-type APIClient interface {
-	Do(ctx context.Context, method, path string, body io.Reader) (*http.Response, error)
-	DoRaw(ctx context.Context, method, path, contentType string, headers map[string]string, body io.Reader) (*http.Response, error)
-	DoJSON(ctx context.Context, method, path string, body io.Reader, dest any) error
-	DoJSONIdempotent(ctx context.Context, method, path string, body io.Reader, dest any) error
-}
 
 // App is the dependency bundle passed to every command constructor.
 //
@@ -31,7 +20,7 @@ type APIClient interface {
 // Output is assigned from the --format / --quiet flag values in PersistentPreRunE.
 type App struct {
 	Version      string
-	API          APIClient
+	API          *api.Client
 	Config       *config.Config
 	ConfigLoader config.Loader
 	Output       *output.Writer

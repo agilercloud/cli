@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -22,8 +21,8 @@ func newRulesCmd(a *app.App) *cobra.Command {
 		Use:   "options",
 		Short: "List available rule conditions, actions, and templates",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result map[string]any
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/rules", nil, &result); err != nil {
+			result, err := a.API.ListRuleOptions(cmd.Context())
+			if err != nil {
 				return err
 			}
 			if a.Output.IsTabular() {
@@ -49,8 +48,8 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 		Short: "List project rules",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result []api.Rule
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/rules", args[0]), nil, &result); err != nil {
+			result, err := a.API.ListProjectRules(cmd.Context(), args[0])
+			if err != nil {
 				return err
 			}
 
@@ -75,12 +74,11 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			var rule map[string]any
-			if err := json.Unmarshal(data, &rule); err != nil {
-				return fmt.Errorf("invalid JSON: %w", err)
+			var in api.CreateRuleInput
+			if err := json.Unmarshal(data, &in); err != nil {
+				return fmt.Errorf("invalid rule JSON: %w", err)
 			}
-			body, _ := json.Marshal(rule)
-			if err := a.API.DoJSONIdempotent(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/rules", args[0]), bytes.NewReader(body), nil); err != nil {
+			if _, err := a.API.CreateRule(cmd.Context(), args[0], in); err != nil {
 				return err
 			}
 			a.Output.Text("Rule created.")
@@ -97,14 +95,11 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			var rule map[string]any
-			if err := json.Unmarshal(data, &rule); err != nil {
-				return fmt.Errorf("invalid JSON: %w", err)
+			var in api.UpdateRuleInput
+			if err := json.Unmarshal(data, &in); err != nil {
+				return fmt.Errorf("invalid rule JSON: %w", err)
 			}
-			// the rule-id is in the path; strip any stray "id" from the body
-			delete(rule, "id")
-			body, _ := json.Marshal(rule)
-			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s/rules/%s", args[0], args[1]), bytes.NewReader(body), nil); err != nil {
+			if err := a.API.UpdateRule(cmd.Context(), args[0], args[1], in); err != nil {
 				return err
 			}
 			a.Output.Text("Rule updated.")
@@ -117,7 +112,7 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 		Short: "Delete a project rule",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DoJSON(cmd.Context(), "DELETE", fmt.Sprintf("/v1/projects/%s/rules/%s", args[0], args[1]), nil, nil); err != nil {
+			if err := a.API.DeleteRule(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			a.Output.Text("Rule deleted.")

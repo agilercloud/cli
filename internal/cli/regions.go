@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"fmt"
+	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
@@ -19,8 +19,8 @@ func newRegionsCmd(a *app.App) *cobra.Command {
 		Use:   "list",
 		Short: "List all regions",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result []api.Region
-			if err := a.API.DoJSON(cmd.Context(), "GET", "/v1/regions", nil, &result); err != nil {
+			result, err := a.API.ListRegions(cmd.Context())
+			if err != nil {
 				return err
 			}
 			renderRegionsList(a.Output, result)
@@ -33,11 +33,11 @@ func newRegionsCmd(a *app.App) *cobra.Command {
 		Short: "Get region details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result api.Region
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/regions/%s", args[0]), nil, &result); err != nil {
+			result, err := a.API.GetRegion(cmd.Context(), args[0])
+			if err != nil {
 				return err
 			}
-			return renderRegionDetail(a.Output, result)
+			return renderRegionDetail(a.Output, *result)
 		},
 	})
 
@@ -55,7 +55,7 @@ func renderRegionsList(w *output.Writer, rs []api.Region) {
 	}
 	rows := make([][]string, len(rs))
 	for i, r := range rs {
-		rows[i] = []string{r.ID, r.Description}
+		rows[i] = []string{r.Id, r.Description}
 	}
 	w.Table([]string{"ID", "DESCRIPTION"}, rows)
 }
@@ -68,9 +68,9 @@ func renderRegionDetail(w *output.Writer, r api.Region) error {
 		w.Structured(r)
 		return nil
 	}
-	w.Text("ID:          %s", r.ID)
+	w.Text("ID:          %s", r.Id)
 	w.Text("Description: %s", r.Description)
-	w.Text("Created:     %s", r.CreatedAt)
-	w.Text("Updated:     %s", r.UpdatedAt)
+	w.Text("Created:     %s", r.CreatedAt.Format(time.RFC3339))
+	w.Text("Updated:     %s", r.UpdatedAt.Format(time.RFC3339))
 	return nil
 }

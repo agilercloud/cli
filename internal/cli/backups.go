@@ -1,11 +1,10 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
@@ -24,8 +23,8 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "List project backups",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result []api.Backup
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/backups", args[0]), nil, &result); err != nil {
+			result, err := a.API.ListBackups(cmd.Context(), args[0])
+			if err != nil {
 				return err
 			}
 			renderBackupsList(a.Output, result)
@@ -38,7 +37,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "Create a manual backup",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DoJSONIdempotent(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/backups", args[0]), nil, nil); err != nil {
+			if _, err := a.API.CreateBackup(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Backup created.")
@@ -51,7 +50,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "Delete a backup",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DoJSON(cmd.Context(), "DELETE", fmt.Sprintf("/v1/projects/%s/backups/%s", args[0], args[1]), nil, nil); err != nil {
+			if err := a.API.DeleteBackup(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			a.Output.Text("Backup deleted.")
@@ -64,7 +63,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "Restore a backup",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DoJSONIdempotent(cmd.Context(), "POST", fmt.Sprintf("/v1/projects/%s/backups/%s/restore", args[0], args[1]), nil, nil); err != nil {
+			if err := a.API.RestoreBackup(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
 			a.Output.Text("Backup restore initiated.")
@@ -78,14 +77,18 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dlType, _ := cmd.Flags().GetString("type")
-			if dlType != "storage" && dlType != "database" {
+			var kind api.BackupArtifact
+			switch dlType {
+			case "database":
+				kind = api.BackupDatabase
+			case "storage":
+				kind = api.BackupStorage
+			default:
 				return fmt.Errorf("--type must be 'storage' or 'database'")
 			}
 
 			outputPath, _ := cmd.Flags().GetString("output")
-
-			path := fmt.Sprintf("/v1/projects/%s/backups/%s/%s", args[0], args[1], dlType)
-			resp, err := a.API.Do(cmd.Context(), "GET", path, nil)
+			resp, err := a.API.DownloadBackup(cmd.Context(), args[0], args[1], kind)
 			if err != nil {
 				return err
 			}
@@ -128,11 +131,11 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "Show backup policy",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var result api.BackupPolicy
-			if err := a.API.DoJSON(cmd.Context(), "GET", fmt.Sprintf("/v1/projects/%s/backups/policy", args[0]), nil, &result); err != nil {
+			result, err := a.API.GetBackupPolicy(cmd.Context(), args[0])
+			if err != nil {
 				return err
 			}
-			renderBackupPolicy(a.Output, result)
+			renderBackupPolicy(a.Output, *result)
 			return nil
 		},
 	}
@@ -142,20 +145,22 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "Update backup policy (--frequency-days, --retention-days)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			body := map[string]any{}
+			var in api.UpdateBackupPolicy
+			touched := false
 			if cmd.Flags().Changed("frequency-days") {
 				v, _ := cmd.Flags().GetInt("frequency-days")
-				body["frequency_days"] = v
+				in.FrequencyDays = &v
+				touched = true
 			}
 			if cmd.Flags().Changed("retention-days") {
 				v, _ := cmd.Flags().GetInt("retention-days")
-				body["retention_days"] = v
+				in.RetentionDays = &v
+				touched = true
 			}
-			if len(body) == 0 {
+			if !touched {
 				return fmt.Errorf("provide --frequency-days and/or --retention-days")
 			}
-			data, _ := json.Marshal(body)
-			if err := a.API.DoJSON(cmd.Context(), "PATCH", fmt.Sprintf("/v1/projects/%s/backups/policy", args[0]), bytes.NewReader(data), nil); err != nil {
+			if err := a.API.SetBackupPolicy(cmd.Context(), args[0], in); err != nil {
 				return err
 			}
 			a.Output.Text("Backup policy updated.")
@@ -181,12 +186,16 @@ func renderBackupsList(w *output.Writer, backups []api.Backup) {
 	}
 	rows := make([][]string, len(backups))
 	for i, b := range backups {
+		size := ""
+		if b.Size != nil {
+			size = fmt.Sprintf("%d", *b.Size)
+		}
 		rows[i] = []string{
-			b.ID,
+			b.Id.String(),
 			b.Status,
-			b.CreatedAt,
+			b.CreatedAt.Format(time.RFC3339),
 			fmt.Sprintf("%t", b.Automatic),
-			fmt.Sprintf("%d", b.Size),
+			size,
 		}
 	}
 	w.Table([]string{"ID", "STATUS", "CREATED", "AUTO", "SIZE (MB)"}, rows)
