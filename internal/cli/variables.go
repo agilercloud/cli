@@ -35,6 +35,13 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sensitive, _ := cmd.Flags().GetBool("sensitive")
+			// Only forward the sensitive field when the flag was explicitly
+			// provided; otherwise leave it nil so the server preserves the
+			// existing value on update (and applies its default on create).
+			var sensitivePtr *bool
+			if cmd.Flags().Changed("sensitive") {
+				sensitivePtr = &sensitive
+			}
 
 			// Resolve to an existing variable if one with this name exists,
 			// so `variables set` is an upsert across CLI sessions.
@@ -54,7 +61,7 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 				if _, err := a.API.CreateVariable(cmd.Context(), args[0], api.CreateVariableInput{
 					Name:      args[1],
 					Value:     args[2],
-					Sensitive: &sensitive,
+					Sensitive: sensitivePtr,
 				}); err != nil {
 					return err
 				}
@@ -64,7 +71,7 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 				if err := a.API.UpdateVariable(cmd.Context(), args[0], variableId, api.UpdateVariableInput{
 					Name:      &name,
 					Value:     &value,
-					Sensitive: &sensitive,
+					Sensitive: sensitivePtr,
 				}); err != nil {
 					return err
 				}

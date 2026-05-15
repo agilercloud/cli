@@ -107,7 +107,7 @@ func renderBillingStatus(w *output.Writer, b api.Billing) error {
 		w.Text("Card:           %s ending in %s (exp %02d/%d)", b.Brand, b.Last4, b.ExpMonth, b.ExpYear)
 	}
 	if b.MonthlyBudget > 0 {
-		w.Text("Monthly budget: $%d", b.MonthlyBudget)
+		w.Text("Monthly budget: $%.2f", float64(b.MonthlyBudget)/100)
 	}
 	if len(b.BudgetAlerts) > 0 {
 		alerts := make([]string, len(b.BudgetAlerts))
@@ -141,7 +141,7 @@ func renderBillingTransactions(w *output.Writer, months []api.BillingMonth) {
 			rows = append(rows, []string{
 				t.CreatedAt.Format(time.RFC3339),
 				t.Description,
-				fmt.Sprintf("$%d", t.Amount),
+				fmt.Sprintf("$%.2f", float64(t.Amount)/100),
 			})
 		}
 	}
