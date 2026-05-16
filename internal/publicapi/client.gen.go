@@ -149,6 +149,39 @@ type NotificationOutput struct {
 	Url         string    `json:"url"`
 }
 
+// PaymentMethodAddressOutput defines model for PaymentMethodAddressOutput.
+type PaymentMethodAddressOutput struct {
+	City       string `json:"city"`
+	Country    string `json:"country"`
+	Line1      string `json:"line1"`
+	Line2      string `json:"line2"`
+	PostalCode string `json:"postal_code"`
+	State      string `json:"state"`
+}
+
+// PaymentMethodBillingDetailsOutput defines model for PaymentMethodBillingDetailsOutput.
+type PaymentMethodBillingDetailsOutput struct {
+	Address PaymentMethodAddressOutput `json:"address"`
+	Name    string                     `json:"name"`
+}
+
+// PaymentMethodCardOutput defines model for PaymentMethodCardOutput.
+type PaymentMethodCardOutput struct {
+	Brand    string `json:"brand"`
+	ExpMonth int    `json:"exp_month"`
+	ExpYear  int    `json:"exp_year"`
+	Last4    string `json:"last4"`
+}
+
+// PaymentMethodOutput defines model for PaymentMethodOutput.
+type PaymentMethodOutput struct {
+	BillingDetails PaymentMethodBillingDetailsOutput `json:"billing_details"`
+	Card           PaymentMethodCardOutput           `json:"card"`
+	Id             string                            `json:"id"`
+	IsDefault      bool                              `json:"is_default"`
+	Type           string                            `json:"type"`
+}
+
 // PendingVerification defines model for PendingVerification.
 type PendingVerification struct {
 	Channel   string     `json:"channel"`
@@ -324,18 +357,11 @@ type SelfUser struct {
 
 // UpdateBillingInput defines model for UpdateBillingInput.
 type UpdateBillingInput struct {
-	AddressCity     *string `json:"address_city,omitempty"`
-	AddressCountry  *string `json:"address_country,omitempty"`
-	AddressLine1    *string `json:"address_line1,omitempty"`
-	AddressLine2    *string `json:"address_line2,omitempty"`
-	AddressState    *string `json:"address_state,omitempty"`
-	AddressZip      *string `json:"address_zip,omitempty"`
-	BudgetAlerts    *[]int  `json:"budget_alerts,omitempty"`
-	BudgetStop      *bool   `json:"budget_stop,omitempty"`
-	ChargeAmount    *int    `json:"charge_amount,omitempty"`
-	ChargeThreshold *int    `json:"charge_threshold,omitempty"`
-	MonthlyBudget   *int    `json:"monthly_budget,omitempty"`
-	Name            *string `json:"name,omitempty"`
+	BudgetAlerts    *[]int `json:"budget_alerts,omitempty"`
+	BudgetStop      *bool  `json:"budget_stop,omitempty"`
+	ChargeAmount    *int   `json:"charge_amount,omitempty"`
+	ChargeThreshold *int   `json:"charge_threshold,omitempty"`
+	MonthlyBudget   *int   `json:"monthly_budget,omitempty"`
 }
 
 // UpdateProjectBackupPolicyInput defines model for UpdateProjectBackupPolicyInput.
@@ -802,6 +828,9 @@ type ClientInterface interface {
 	UpdateMeBillingWithBody(ctx context.Context, params *UpdateMeBillingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateMeBilling(ctx context.Context, params *UpdateMeBillingParams, body UpdateMeBillingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListMeBillingPaymentMethods request
+	ListMeBillingPaymentMethods(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetMeBillingStatementPDF request
 	GetMeBillingStatementPDF(ctx context.Context, period string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1469,6 +1498,18 @@ func (c *Client) UpdateMeBillingWithBody(ctx context.Context, params *UpdateMeBi
 
 func (c *Client) UpdateMeBilling(ctx context.Context, params *UpdateMeBillingParams, body UpdateMeBillingJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateMeBillingRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListMeBillingPaymentMethods(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMeBillingPaymentMethodsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -3677,6 +3718,33 @@ func NewUpdateMeBillingRequestWithBody(server string, params *UpdateMeBillingPar
 	return req, nil
 }
 
+// NewListMeBillingPaymentMethodsRequest generates requests for ListMeBillingPaymentMethods
+func NewListMeBillingPaymentMethodsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users/me/billing/payment-methods")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetMeBillingStatementPDFRequest generates requests for GetMeBillingStatementPDF
 func NewGetMeBillingStatementPDFRequest(server string, period string) (*http.Request, error) {
 	var err error
@@ -4100,6 +4168,9 @@ type ClientWithResponsesInterface interface {
 	UpdateMeBillingWithBodyWithResponse(ctx context.Context, params *UpdateMeBillingParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateMeBillingResponse, error)
 
 	UpdateMeBillingWithResponse(ctx context.Context, params *UpdateMeBillingParams, body UpdateMeBillingJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateMeBillingResponse, error)
+
+	// ListMeBillingPaymentMethodsWithResponse request
+	ListMeBillingPaymentMethodsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListMeBillingPaymentMethodsResponse, error)
 
 	// GetMeBillingStatementPDFWithResponse request
 	GetMeBillingStatementPDFWithResponse(ctx context.Context, period string, reqEditors ...RequestEditorFn) (*GetMeBillingStatementPDFResponse, error)
@@ -5660,6 +5731,40 @@ func (r UpdateMeBillingResponse) ContentType() string {
 	return ""
 }
 
+type ListMeBillingPaymentMethodsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]PaymentMethodOutput
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON429      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r ListMeBillingPaymentMethodsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListMeBillingPaymentMethodsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListMeBillingPaymentMethodsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetMeBillingStatementPDFResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -6312,6 +6417,15 @@ func (c *ClientWithResponses) UpdateMeBillingWithResponse(ctx context.Context, p
 		return nil, err
 	}
 	return ParseUpdateMeBillingResponse(rsp)
+}
+
+// ListMeBillingPaymentMethodsWithResponse request returning *ListMeBillingPaymentMethodsResponse
+func (c *ClientWithResponses) ListMeBillingPaymentMethodsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListMeBillingPaymentMethodsResponse, error) {
+	rsp, err := c.ListMeBillingPaymentMethods(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListMeBillingPaymentMethodsResponse(rsp)
 }
 
 // GetMeBillingStatementPDFWithResponse request returning *GetMeBillingStatementPDFResponse
@@ -9047,6 +9161,60 @@ func ParseUpdateMeBillingResponse(rsp *http.Response) (*UpdateMeBillingResponse,
 			return nil, err
 		}
 		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListMeBillingPaymentMethodsResponse parses an HTTP response from a ListMeBillingPaymentMethodsWithResponse call
+func ParseListMeBillingPaymentMethodsResponse(rsp *http.Response) (*ListMeBillingPaymentMethodsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListMeBillingPaymentMethodsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []PaymentMethodOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ErrorResponse
