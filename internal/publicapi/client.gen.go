@@ -46,19 +46,6 @@ func (e GetProjectUsageParamsGranularity) Valid() bool {
 	}
 }
 
-// AuthStatus defines model for AuthStatus.
-type AuthStatus struct {
-	LastLoginAt time.Time      `json:"last_login_at"`
-	Password    bool           `json:"password"`
-	Totp        AuthTotpStatus `json:"totp"`
-}
-
-// AuthTotpStatus defines model for AuthTotpStatus.
-type AuthTotpStatus struct {
-	Active bool    `json:"active"`
-	Secret *string `json:"secret,omitempty"`
-}
-
 // BillingOutput defines model for BillingOutput.
 type BillingOutput struct {
 	AddressCity     string     `json:"address_city"`
@@ -274,13 +261,6 @@ type ProjectVariableOutput struct {
 	Value     *string            `json:"value,omitempty"`
 }
 
-// PublicUser defines model for PublicUser.
-type PublicUser struct {
-	CreatedAt time.Time          `json:"created_at"`
-	Id        openapi_types.UUID `json:"id"`
-	Name      string             `json:"name"`
-}
-
 // RegionOutput defines model for RegionOutput.
 type RegionOutput struct {
 	CreatedAt   time.Time `json:"created_at"`
@@ -390,12 +370,6 @@ type UpdateProjectVariableInput struct {
 	Name      *string `json:"name,omitempty"`
 	Sensitive *bool   `json:"sensitive,omitempty"`
 	Value     *string `json:"value,omitempty"`
-}
-
-// UpdateSelfUserInput defines model for UpdateSelfUserInput.
-type UpdateSelfUserInput struct {
-	Email *string `json:"email,omitempty"`
-	Name  *string `json:"name,omitempty"`
 }
 
 // apiKeyAuthContextKey is the context key for apiKeyAuth security scheme
@@ -549,12 +523,6 @@ type UpdateProjectVariableParams struct {
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
 }
 
-// UpdateSelfUserParams defines parameters for UpdateSelfUser.
-type UpdateSelfUserParams struct {
-	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
-	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
-}
-
 // UpdateMeBillingParams defines parameters for UpdateMeBilling.
 type UpdateMeBillingParams struct {
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
@@ -604,9 +572,6 @@ type CreateProjectVariableJSONRequestBody = CreateProjectVariableInput
 
 // UpdateProjectVariableJSONRequestBody defines body for UpdateProjectVariable for application/json ContentType.
 type UpdateProjectVariableJSONRequestBody = UpdateProjectVariableInput
-
-// UpdateSelfUserJSONRequestBody defines body for UpdateSelfUser for application/json ContentType.
-type UpdateSelfUserJSONRequestBody = UpdateSelfUserInput
 
 // UpdateMeBillingJSONRequestBody defines body for UpdateMeBilling for application/json ContentType.
 type UpdateMeBillingJSONRequestBody = UpdateBillingInput
@@ -830,14 +795,6 @@ type ClientInterface interface {
 	// GetSelfUser request
 	GetSelfUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateSelfUserWithBody request with any body
-	UpdateSelfUserWithBody(ctx context.Context, params *UpdateSelfUserParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateSelfUser(ctx context.Context, params *UpdateSelfUserParams, body UpdateSelfUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetMeAuth request
-	GetMeAuth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetMeBilling request
 	GetMeBilling(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -860,9 +817,6 @@ type ClientInterface interface {
 
 	// ListMeVerify request
 	ListMeVerify(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetPeerUser request
-	GetPeerUser(ctx context.Context, uid string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1489,42 +1443,6 @@ func (c *Client) GetSelfUser(ctx context.Context, reqEditors ...RequestEditorFn)
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateSelfUserWithBody(ctx context.Context, params *UpdateSelfUserParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateSelfUserRequestWithBody(c.Server, params, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UpdateSelfUser(ctx context.Context, params *UpdateSelfUserParams, body UpdateSelfUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateSelfUserRequest(c.Server, params, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetMeAuth(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetMeAuthRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetMeBilling(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetMeBillingRequest(c.Server)
 	if err != nil {
@@ -1611,18 +1529,6 @@ func (c *Client) DeleteMeNotification(ctx context.Context, notification string, 
 
 func (c *Client) ListMeVerify(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListMeVerifyRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetPeerUser(ctx context.Context, uid string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetPeerUserRequest(c.Server, uid)
 	if err != nil {
 		return nil, err
 	}
@@ -3689,88 +3595,6 @@ func NewGetSelfUserRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewUpdateSelfUserRequest calls the generic UpdateSelfUser builder with application/json body
-func NewUpdateSelfUserRequest(server string, params *UpdateSelfUserParams, body UpdateSelfUserJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateSelfUserRequestWithBody(server, params, "application/json", bodyReader)
-}
-
-// NewUpdateSelfUserRequestWithBody generates requests for UpdateSelfUser with any type of body
-func NewUpdateSelfUserRequestWithBody(server string, params *UpdateSelfUserParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/users/me")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	if params != nil {
-
-		if params.IdempotencyKey != nil {
-			var headerParam0 string
-
-			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
-			if err != nil {
-				return nil, err
-			}
-
-			req.Header.Set("Idempotency-Key", headerParam0)
-		}
-
-	}
-
-	return req, nil
-}
-
-// NewGetMeAuthRequest generates requests for GetMeAuth
-func NewGetMeAuthRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/users/me/auth")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetMeBillingRequest generates requests for GetMeBilling
 func NewGetMeBillingRequest(server string) (*http.Request, error) {
 	var err error
@@ -4080,40 +3904,6 @@ func NewListMeVerifyRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewGetPeerUserRequest generates requests for GetPeerUser
-func NewGetPeerUserRequest(server string, uid string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "uid", uid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/users/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -4303,14 +4093,6 @@ type ClientWithResponsesInterface interface {
 	// GetSelfUserWithResponse request
 	GetSelfUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetSelfUserResponse, error)
 
-	// UpdateSelfUserWithBodyWithResponse request with any body
-	UpdateSelfUserWithBodyWithResponse(ctx context.Context, params *UpdateSelfUserParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSelfUserResponse, error)
-
-	UpdateSelfUserWithResponse(ctx context.Context, params *UpdateSelfUserParams, body UpdateSelfUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSelfUserResponse, error)
-
-	// GetMeAuthWithResponse request
-	GetMeAuthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMeAuthResponse, error)
-
 	// GetMeBillingWithResponse request
 	GetMeBillingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMeBillingResponse, error)
 
@@ -4333,9 +4115,6 @@ type ClientWithResponsesInterface interface {
 
 	// ListMeVerifyWithResponse request
 	ListMeVerifyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListMeVerifyResponse, error)
-
-	// GetPeerUserWithResponse request
-	GetPeerUserWithResponse(ctx context.Context, uid string, reqEditors ...RequestEditorFn) (*GetPeerUserResponse, error)
 }
 
 type ListProjectsResponse struct {
@@ -5812,73 +5591,6 @@ func (r GetSelfUserResponse) ContentType() string {
 	return ""
 }
 
-type UpdateSelfUserResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *ErrorResponse
-	JSON401      *ErrorResponse
-	JSON409      *ErrorResponse
-	JSON429      *ErrorResponse
-	JSON500      *ErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateSelfUserResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateSelfUserResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UpdateSelfUserResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetMeAuthResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *AuthStatus
-	JSON401      *ErrorResponse
-	JSON429      *ErrorResponse
-	JSON500      *ErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r GetMeAuthResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetMeAuthResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetMeAuthResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type GetMeBillingResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -6112,40 +5824,6 @@ func (r ListMeVerifyResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r ListMeVerifyResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type GetPeerUserResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *PublicUser
-	JSON401      *ErrorResponse
-	JSON404      *ErrorResponse
-	JSON429      *ErrorResponse
-	JSON500      *ErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r GetPeerUserResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetPeerUserResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r GetPeerUserResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -6610,32 +6288,6 @@ func (c *ClientWithResponses) GetSelfUserWithResponse(ctx context.Context, reqEd
 	return ParseGetSelfUserResponse(rsp)
 }
 
-// UpdateSelfUserWithBodyWithResponse request with arbitrary body returning *UpdateSelfUserResponse
-func (c *ClientWithResponses) UpdateSelfUserWithBodyWithResponse(ctx context.Context, params *UpdateSelfUserParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSelfUserResponse, error) {
-	rsp, err := c.UpdateSelfUserWithBody(ctx, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateSelfUserResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateSelfUserWithResponse(ctx context.Context, params *UpdateSelfUserParams, body UpdateSelfUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSelfUserResponse, error) {
-	rsp, err := c.UpdateSelfUser(ctx, params, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateSelfUserResponse(rsp)
-}
-
-// GetMeAuthWithResponse request returning *GetMeAuthResponse
-func (c *ClientWithResponses) GetMeAuthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMeAuthResponse, error) {
-	rsp, err := c.GetMeAuth(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetMeAuthResponse(rsp)
-}
-
 // GetMeBillingWithResponse request returning *GetMeBillingResponse
 func (c *ClientWithResponses) GetMeBillingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetMeBillingResponse, error) {
 	rsp, err := c.GetMeBilling(ctx, reqEditors...)
@@ -6705,15 +6357,6 @@ func (c *ClientWithResponses) ListMeVerifyWithResponse(ctx context.Context, reqE
 		return nil, err
 	}
 	return ParseListMeVerifyResponse(rsp)
-}
-
-// GetPeerUserWithResponse request returning *GetPeerUserResponse
-func (c *ClientWithResponses) GetPeerUserWithResponse(ctx context.Context, uid string, reqEditors ...RequestEditorFn) (*GetPeerUserResponse, error) {
-	rsp, err := c.GetPeerUser(ctx, uid, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetPeerUserResponse(rsp)
 }
 
 // ParseListProjectsResponse parses an HTTP response from a ListProjectsWithResponse call
@@ -9309,107 +8952,6 @@ func ParseGetSelfUserResponse(rsp *http.Response) (*GetSelfUserResponse, error) 
 	return response, nil
 }
 
-// ParseUpdateSelfUserResponse parses an HTTP response from a UpdateSelfUserWithResponse call
-func ParseUpdateSelfUserResponse(rsp *http.Response) (*UpdateSelfUserResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateSelfUserResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetMeAuthResponse parses an HTTP response from a GetMeAuthWithResponse call
-func ParseGetMeAuthResponse(rsp *http.Response) (*GetMeAuthResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetMeAuthResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest AuthStatus
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetMeBillingResponse parses an HTTP response from a GetMeBillingWithResponse call
 func ParseGetMeBillingResponse(rsp *http.Response) (*GetMeBillingResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9775,60 +9317,6 @@ func ParseListMeVerifyResponse(rsp *http.Response) (*ListMeVerifyResponse, error
 			return nil, err
 		}
 		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON429 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetPeerUserResponse parses an HTTP response from a GetPeerUserWithResponse call
-func ParseGetPeerUserResponse(rsp *http.Response) (*GetPeerUserResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetPeerUserResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest PublicUser
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ErrorResponse
