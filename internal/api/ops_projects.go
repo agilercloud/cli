@@ -8,7 +8,7 @@ import (
 
 // ListProjects fetches the caller's projects.
 func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
-	resp, err := c.impl.ListProjectsWithResponse(ctx)
+	resp, err := c.impl.ListProjectsWithResponse(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
