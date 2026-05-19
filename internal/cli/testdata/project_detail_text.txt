@@ -4,5 +4,6 @@ Status:    running
 Active:    true
 Region:    eu
 Runtime:   node22
+Workspace: 00000000-0000-0000-0000-000000000002
 Created:   2025-01-01T00:00:00Z
 Updated:   2025-02-01T00:00:00Z

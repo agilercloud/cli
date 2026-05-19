@@ -23,16 +23,6 @@ func (c *Client) GetSelfUser(ctx context.Context) (*SelfUser, error) {
 	return resp.JSON200, nil
 }
 
-// UpdateSelfUser patches the caller's user record.
-func (c *Client) UpdateSelfUser(ctx context.Context, in UpdateSelfUserInput) error {
-	params := &publicapi.UpdateSelfUserParams{IdempotencyKey: idempotencyKey()}
-	resp, err := c.impl.UpdateSelfUserWithResponse(ctx, params, in)
-	if err != nil {
-		return err
-	}
-	return checkStatus(resp.StatusCode(), resp.Body)
-}
-
 // GetBilling returns the caller's billing posture (card brand, address,
 // budgets, force-update flag).
 func (c *Client) GetBilling(ctx context.Context) (*Billing, error) {

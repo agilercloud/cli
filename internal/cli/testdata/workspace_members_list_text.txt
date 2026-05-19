@@ -1,0 +1,3 @@
+ID                                    EMAIL            NAME  ROLE       STATUS   BILLING  MFA
+00000000-0000-0000-0000-000000000001  ada@example.com  Ada   admin      active   yes      yes
+00000000-0000-0000-0000-000000000002  new@example.com        developer  pending  no       

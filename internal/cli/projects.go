@@ -9,6 +9,7 @@ import (
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
 	"github.com/agilercloud/cli/internal/output"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +42,11 @@ func newProjectsListCmd(a *app.App) *cobra.Command {
 		Use:   "list",
 		Short: "List all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.ListProjects(cmd.Context())
+			workspaceID, err := normalizeWorkspaceID(configuredWorkspaceID(a))
+			if err != nil {
+				return err
+			}
+			result, err := a.API.ListProjects(cmd.Context(), workspaceID)
 			if err != nil {
 				return err
 			}
@@ -73,11 +78,17 @@ func newProjectsCreateCmd(a *app.App) *cobra.Command {
 		Use:   "create",
 		Short: "Create a new project",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if _, err := a.API.CreateProject(cmd.Context(), api.CreateProjectInput{
+			in := api.CreateProjectInput{
 				Name:    name,
 				Region:  region,
 				Runtime: runtime,
-			}); err != nil {
+			}
+			if workspaceID, err := parseWorkspaceID(configuredWorkspaceID(a)); err != nil {
+				return err
+			} else if workspaceID != uuid.Nil {
+				in.WorkspaceId = &workspaceID
+			}
+			if _, err := a.API.CreateProject(cmd.Context(), in); err != nil {
 				return err
 			}
 			a.Output.Text("Project created.")
@@ -117,9 +128,20 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 				in.Runtime = &v
 				touched = true
 			}
+			if cmd.Root().PersistentFlags().Changed("workspace") {
+				v, err := normalizeWorkspaceID(a.FlagWorkspaceID)
+				if err != nil {
+					return err
+				}
+				if v == "" {
+					return fmt.Errorf("workspace must be a valid UUID")
+				}
+				in.WorkspaceId = &v
+				touched = true
+			}
 
 			if !touched {
-				return fmt.Errorf("no flags provided; use --name, --active, or --runtime")
+				return fmt.Errorf("no flags provided; use --name, --active, --runtime, or --workspace")
 			}
 
 			if err := a.API.UpdateProject(cmd.Context(), args[0], in); err != nil {
@@ -390,9 +412,9 @@ func renderProjectsList(w *output.Writer, ps []api.Project) {
 	}
 	rows := make([][]string, len(ps))
 	for i, p := range ps {
-		rows[i] = []string{p.Id.String(), p.Name, p.Status, p.Region, p.Runtime}
+		rows[i] = []string{p.Id.String(), p.Name, p.Status, p.Region, p.Runtime, p.WorkspaceId.String()}
 	}
-	w.Table([]string{"ID", "NAME", "STATUS", "REGION", "RUNTIME"}, rows)
+	w.Table([]string{"ID", "NAME", "STATUS", "REGION", "RUNTIME", "WORKSPACE"}, rows)
 }
 
 func renderProjectDetail(w *output.Writer, p api.ProjectDetail) error {
@@ -413,6 +435,7 @@ func renderProjectDetail(w *output.Writer, p api.ProjectDetail) error {
 	w.Text("Active:    %t", p.Active)
 	w.Text("Region:    %s", p.Region)
 	w.Text("Runtime:   %s", p.Runtime)
+	w.Text("Workspace: %s", p.WorkspaceId)
 	w.Text("Created:   %s", p.CreatedAt.Format(time.RFC3339))
 	w.Text("Updated:   %s", p.UpdatedAt.Format(time.RFC3339))
 	return nil

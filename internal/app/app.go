@@ -32,8 +32,9 @@ type App struct {
 	FlagConfig string
 	// FlagAPIKey and FlagAPIBase let the --api-key / --api-base flags
 	// override config file values at api-client construction time.
-	FlagAPIKey  string
-	FlagAPIBase string
+	FlagAPIKey      string
+	FlagAPIBase     string
+	FlagWorkspaceID string
 
 	// OutputFormat is the raw --format flag value (parsed in initOutput);
 	// OutputQuiet is the raw --quiet flag value.

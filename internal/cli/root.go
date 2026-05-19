@@ -61,6 +61,9 @@ func NewRootCmd(a *app.App) *cobra.Command {
 			if a.FlagAPIBase != "" {
 				cfg.APIBase = a.FlagAPIBase
 			}
+			if a.FlagWorkspaceID != "" {
+				cfg.WorkspaceID = a.FlagWorkspaceID
+			}
 			a.Config = cfg
 			a.API = api.NewClient(cfg.APIBase, cfg.APIKey)
 			return nil
@@ -71,11 +74,13 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.PersistentFlags().StringVarP(&a.FlagConfig, "config", "c", "", "Config file path")
 	root.PersistentFlags().StringVar(&a.FlagAPIKey, "api-key", "", "API key (overrides config and AGILER_API_KEY)")
 	root.PersistentFlags().StringVar(&a.FlagAPIBase, "api-base", "", "API base URL (overrides config and AGILER_API_BASE)")
+	root.PersistentFlags().StringVar(&a.FlagWorkspaceID, "workspace", "", "Workspace ID for project commands (overrides config and AGILER_WORKSPACE_ID)")
 	root.PersistentFlags().StringVar(&a.OutputFormat, "format", "", "Output format: text|json|yaml|csv|tsv (default text)")
 	root.PersistentFlags().BoolVarP(&a.OutputQuiet, "quiet", "q", false, "Minimal output (IDs only)")
 
 	root.AddCommand(newStatusCmd(a))
 	root.AddCommand(newConfigCmd(a))
+	root.AddCommand(newWorkspacesCmd(a))
 	root.AddCommand(newProjectsCmd(a))
 	root.AddCommand(newRuntimesCmd(a))
 	root.AddCommand(newRegionsCmd(a))

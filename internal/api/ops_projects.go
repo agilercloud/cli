@@ -6,9 +6,16 @@ import (
 	"github.com/agilercloud/cli/internal/publicapi"
 )
 
-// ListProjects fetches the caller's projects.
-func (c *Client) ListProjects(ctx context.Context) ([]Project, error) {
-	resp, err := c.impl.ListProjectsWithResponse(ctx, nil)
+// ListProjects fetches the caller's projects, optionally scoped to a workspace.
+func (c *Client) ListProjects(ctx context.Context, workspaceID string) ([]Project, error) {
+	var params *publicapi.ListProjectsParams
+	if id, err := parseOptionalUUID("workspace", workspaceID); err != nil {
+		return nil, err
+	} else if id != nil {
+		params = &publicapi.ListProjectsParams{WorkspaceId: id}
+	}
+
+	resp, err := c.impl.ListProjectsWithResponse(ctx, params)
 	if err != nil {
 		return nil, err
 	}

@@ -61,17 +61,19 @@ The CLI resolves its config from the first file found:
 Config format:
 
 ```toml
-api_key  = "ak_..."
-api_base = "https://api.agiler.io"   # optional; defaults to production
+api_key      = "ak_..."
+api_base     = "https://api.agiler.io"   # optional; defaults to production
+workspace_id = "..."                     # optional; default workspace for project commands
 ```
 
-Environment variables `AGILER_API_KEY` and `AGILER_API_BASE` override config values. Command-line flags `--api-key` and `--api-base` override both.
+Environment variables `AGILER_API_KEY`, `AGILER_API_BASE`, and `AGILER_WORKSPACE_ID` override config values. Command-line flags `--api-key`, `--api-base`, and `--workspace` override both.
 
 ## Commands
 
 ```
 agiler status              Check API status
 agiler config              Manage CLI configuration
+agiler workspaces          Manage workspaces (list, get, create, members)
 agiler projects            Manage projects (list, get, create, update, delete)
 agiler projects variables  Manage environment variables
 agiler projects domains    Manage custom domains

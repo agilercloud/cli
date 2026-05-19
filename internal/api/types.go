@@ -28,6 +28,10 @@ type (
 	RuleOptions  = publicapi.RuleOptionsOutput
 	Region       = publicapi.RegionOutput
 	Runtime      = publicapi.RuntimeOutput
+	Workspace    = publicapi.WorkspaceOutput
+
+	WorkspaceMember          = publicapi.WorkspaceMemberOutput
+	WorkspaceBillingTransfer = publicapi.WorkspaceBillingTransferOutput
 
 	SelfUser     = publicapi.SelfUser
 	Billing      = publicapi.BillingOutput
@@ -35,19 +39,19 @@ type (
 	BillingTx    = publicapi.BillingTransactionEntry
 	Notification = publicapi.NotificationOutput
 
-	CreateProjectInput  = publicapi.CreateProjectInput
-	UpdateProjectInput  = publicapi.UpdateProjectInput
-	CreateDomainInput   = publicapi.CreateProjectDomainInput
-	UpdateDomainInput   = publicapi.UpdateProjectDomainInput
-	CreateVariableInput = publicapi.CreateProjectVariableInput
-	UpdateVariableInput = publicapi.UpdateProjectVariableInput
-	CreateRuleInput     = publicapi.CreateProjectRuleInput
-	UpdateRuleInput     = publicapi.UpdateProjectRuleInput
-	UpdateBackupPolicy  = publicapi.UpdateProjectBackupPolicyInput
-	UpdateSelfUserInput = publicapi.UpdateSelfUserInput
-	UpdateBillingInput  = publicapi.UpdateBillingInput
-	CreateSQLStatement  = publicapi.CreateSQLStatementInput
-	UsageGranularity    = publicapi.GetProjectUsageParamsGranularity
+	CreateProjectInput   = publicapi.CreateProjectInput
+	CreateWorkspaceInput = publicapi.CreateWorkspaceInput
+	UpdateProjectInput   = publicapi.UpdateProjectInput
+	CreateDomainInput    = publicapi.CreateProjectDomainInput
+	UpdateDomainInput    = publicapi.UpdateProjectDomainInput
+	CreateVariableInput  = publicapi.CreateProjectVariableInput
+	UpdateVariableInput  = publicapi.UpdateProjectVariableInput
+	CreateRuleInput      = publicapi.CreateProjectRuleInput
+	UpdateRuleInput      = publicapi.UpdateProjectRuleInput
+	UpdateBackupPolicy   = publicapi.UpdateProjectBackupPolicyInput
+	UpdateBillingInput   = publicapi.UpdateBillingInput
+	CreateSQLStatement   = publicapi.CreateSQLStatementInput
+	UsageGranularity     = publicapi.GetProjectUsageParamsGranularity
 )
 
 // Granularity constants for project usage queries. Mirror publicapi's

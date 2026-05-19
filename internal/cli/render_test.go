@@ -49,8 +49,8 @@ var (
 
 func TestRenderProjectsList(t *testing.T) {
 	data := []api.Project{
-		{Id: testID1, Name: "alpha", Status: "running", Region: "eu", Runtime: "node22", CreatedAt: testTime, UpdatedAt: testTime},
-		{Id: testID2, Name: "beta-service", Status: "stopped", Region: "us", Runtime: "python312", CreatedAt: testTime, UpdatedAt: testTime},
+		{Id: testID1, Name: "alpha", Status: "running", Region: "eu", Runtime: "node22", WorkspaceId: testID1, CreatedAt: testTime, UpdatedAt: testTime},
+		{Id: testID2, Name: "beta-service", Status: "stopped", Region: "us", Runtime: "python312", WorkspaceId: testID2, CreatedAt: testTime, UpdatedAt: testTime},
 	}
 	assertRender(t, "projects_list_text.txt",
 		func(w *output.Writer) { renderProjectsList(w, data) }, output.FormatText, false)
@@ -64,19 +64,66 @@ func TestRenderProjectsList(t *testing.T) {
 
 func TestRenderProjectDetail(t *testing.T) {
 	data := api.ProjectDetail{
-		Id:        testID1,
-		Name:      "alpha",
-		Status:    "running",
-		Active:    true,
-		Region:    "eu",
-		Runtime:   "node22",
-		CreatedAt: testTime,
-		UpdatedAt: time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+		Id:          testID1,
+		Name:        "alpha",
+		Status:      "running",
+		Active:      true,
+		Region:      "eu",
+		Runtime:     "node22",
+		WorkspaceId: testID2,
+		CreatedAt:   testTime,
+		UpdatedAt:   time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 	}
 	assertRender(t, "project_detail_text.txt",
 		func(w *output.Writer) { _ = renderProjectDetail(w, data) }, output.FormatText, false)
 	assertRender(t, "project_detail_quiet.txt",
 		func(w *output.Writer) { _ = renderProjectDetail(w, data) }, output.FormatText, true)
+}
+
+func TestRenderWorkspacesList(t *testing.T) {
+	data := []api.Workspace{
+		{Id: testID1, Name: "Main", Role: "admin", IsBillingUser: true, RequireMfa: false, MfaRequiredForCaller: false, CreatedAt: testTime, UpdatedAt: testTime},
+		{Id: testID2, Name: "Read Only", Role: "viewer", IsBillingUser: false, RequireMfa: true, MfaRequiredForCaller: true, CreatedAt: testTime, UpdatedAt: testTime},
+	}
+	assertRender(t, "workspaces_list_text.txt",
+		func(w *output.Writer) { renderWorkspacesList(w, data) }, output.FormatText, false)
+	assertRender(t, "workspaces_list_quiet.txt",
+		func(w *output.Writer) { renderWorkspacesList(w, data) }, output.FormatText, true)
+	assertRender(t, "workspaces_list_empty.txt",
+		func(w *output.Writer) { renderWorkspacesList(w, nil) }, output.FormatText, false)
+}
+
+func TestRenderWorkspaceDetail(t *testing.T) {
+	data := api.Workspace{
+		Id:                   testID1,
+		Name:                 "Main",
+		Role:                 "admin",
+		BillingUserId:        testID2,
+		IsBillingUser:        true,
+		RequireMfa:           true,
+		MfaRequiredForCaller: false,
+		CreatedAt:            testTime,
+		UpdatedAt:            time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+	}
+	assertRender(t, "workspace_detail_text.txt",
+		func(w *output.Writer) { _ = renderWorkspaceDetail(w, data) }, output.FormatText, false)
+	assertRender(t, "workspace_detail_quiet.txt",
+		func(w *output.Writer) { _ = renderWorkspaceDetail(w, data) }, output.FormatText, true)
+}
+
+func TestRenderWorkspaceMembersList(t *testing.T) {
+	name := "Ada"
+	mfa := true
+	data := []api.WorkspaceMember{
+		{UserId: &testID1, Email: "ada@example.com", Name: &name, Role: "admin", Status: "active", IsBillingUser: true, MfaEnabled: &mfa, CreatedAt: testTime, UpdatedAt: testTime},
+		{InviteId: &testID2, Email: "new@example.com", Role: "developer", Status: "pending", IsBillingUser: false, ExpiresAt: &testTime, CreatedAt: testTime, UpdatedAt: testTime},
+	}
+	assertRender(t, "workspace_members_list_text.txt",
+		func(w *output.Writer) { renderWorkspaceMembersList(w, data) }, output.FormatText, false)
+	assertRender(t, "workspace_members_list_quiet.txt",
+		func(w *output.Writer) { renderWorkspaceMembersList(w, data) }, output.FormatText, true)
+	assertRender(t, "workspace_members_list_empty.txt",
+		func(w *output.Writer) { renderWorkspaceMembersList(w, nil) }, output.FormatText, false)
 }
 
 func TestRenderProjectDetailTabularError(t *testing.T) {
