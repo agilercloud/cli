@@ -58,18 +58,21 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		},
 	})
 
-	cmd.AddCommand(&cobra.Command{
+	restoreCmd := &cobra.Command{
 		Use:   "restore <project> <backup-id>",
 		Short: "Restore a backup",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.RestoreBackup(cmd.Context(), args[0], args[1]); err != nil {
+			drainRequests, _ := cmd.Flags().GetBool("drain-requests")
+			if err := a.API.RestoreBackup(cmd.Context(), args[0], args[1], drainRequests); err != nil {
 				return err
 			}
 			a.Output.Text("Backup restore initiated.")
 			return nil
 		},
-	})
+	}
+	restoreCmd.Flags().Bool("drain-requests", false, "Wait for in-flight requests to drain before restoring")
+	cmd.AddCommand(restoreCmd)
 
 	dl := &cobra.Command{
 		Use:   "download <project> <backup-id>",

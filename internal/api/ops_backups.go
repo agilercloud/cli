@@ -50,8 +50,11 @@ func (c *Client) DeleteBackup(ctx context.Context, projectID, backupID string) e
 }
 
 // RestoreBackup restores a project from the named backup.
-func (c *Client) RestoreBackup(ctx context.Context, projectID, backupID string) error {
+func (c *Client) RestoreBackup(ctx context.Context, projectID, backupID string, drainRequests bool) error {
 	params := &publicapi.RestoreProjectBackupParams{IdempotencyKey: idempotencyKey()}
+	if drainRequests {
+		params.DrainRequests = &drainRequests
+	}
 	resp, err := c.impl.RestoreProjectBackupWithResponse(ctx, projectID, backupID, params)
 	if err != nil {
 		return err

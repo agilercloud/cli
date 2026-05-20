@@ -52,6 +52,7 @@ func TestHelpCommands(t *testing.T) {
 		"projects files move --help",
 		"projects files copy --help",
 		"projects backups --help",
+		"projects backups restore --help",
 		"projects sql --help",
 		"projects sql execute --help",
 		"projects sql history --help",

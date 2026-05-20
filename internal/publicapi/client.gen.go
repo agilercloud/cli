@@ -497,6 +497,9 @@ type DeleteProjectBackupParams struct {
 
 // RestoreProjectBackupParams defines parameters for RestoreProjectBackup.
 type RestoreProjectBackupParams struct {
+	// DrainRequests Wait for in-flight requests to drain before starting the restore. Defaults to false.
+	DrainRequests *bool `form:"drain_requests,omitempty" json:"drain_requests,omitempty"`
+
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
 }
@@ -2297,6 +2300,33 @@ func NewRestoreProjectBackupRequest(server string, project string, backup string
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.DrainRequests != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "drain_requests", *params.DrainRequests, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
