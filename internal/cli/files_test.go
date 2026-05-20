@@ -12,8 +12,8 @@ import (
 )
 
 // TestFilesMoveSendsXMoveSourceHeader verifies the move command issues a PUT
-// against the destination URL with X-Move-Source carrying the canonical
-// /v1/projects/{id}/files/{path} value, and no JSON body.
+// against the destination URL with X-Move-Source carrying the project-relative
+// source path, and no JSON body.
 func TestFilesMoveSendsXMoveSourceHeader(t *testing.T) {
 	var (
 		gotMethod  string
@@ -53,7 +53,7 @@ func TestFilesMoveSendsXMoveSourceHeader(t *testing.T) {
 	if gotPath != "/v1/projects/proj-1/files/docs/b.txt" {
 		t.Errorf("path = %q", gotPath)
 	}
-	if gotMove != "proj-1/docs/a.txt" {
+	if gotMove != "docs/a.txt" {
 		t.Errorf("X-Move-Source = %q", gotMove)
 	}
 	if gotCopy != "" {
@@ -95,7 +95,7 @@ func TestFilesCopySendsXCopySourceHeader(t *testing.T) {
 		t.Fatalf("copy command failed: %v", err)
 	}
 
-	if gotCopy != "proj-1/docs/a.txt" {
+	if gotCopy != "docs/a.txt" {
 		t.Errorf("X-Copy-Source = %q", gotCopy)
 	}
 	if gotMove != "" {

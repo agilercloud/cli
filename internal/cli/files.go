@@ -367,9 +367,9 @@ func newFilesDeleteCmd(a *app.App) *cobra.Command {
 }
 
 // projectFileSource builds the canonical X-Move-Source / X-Copy-Source
-// header value: "{project-id}/{path}" with path segments percent-encoded.
-func projectFileSource(projectID, sourcePath string) string {
-	return projectID + "/" + api.EncodeFilePath(sourcePath)
+// header value: "{path}" with path segments percent-encoded.
+func projectFileSource(sourcePath string) string {
+	return api.EncodeFilePath(sourcePath)
 }
 
 func newFilesMoveCmd(a *app.App) *cobra.Command {
@@ -392,7 +392,7 @@ func newFilesTransferCmd(a *app.App, name, short, sourceHeader, successText stri
 			destination := args[2]
 
 			headers := map[string]string{
-				sourceHeader: projectFileSource(projectID, source),
+				sourceHeader: projectFileSource(source),
 			}
 			if !overwrite {
 				headers["If-None-Match"] = "*"

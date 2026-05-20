@@ -12,8 +12,9 @@ import (
 
 // EncodeFilePath URL-encodes each segment of a project-relative file
 // path, leaving the slashes between segments intact. Exported so CLI
-// code can build X-Move-Source / X-Copy-Source header values that
-// match the canonical /v1/projects/{id}/files/{path} URI encoding.
+// code can build file paths and X-Move-Source / X-Copy-Source header
+// values that match the canonical /v1/projects/{id}/files/{path} URI
+// encoding.
 //
 // The generated client treats the whole `{path}` parameter as a single
 // segment, which would double-escape slashes — so the wrappers below
