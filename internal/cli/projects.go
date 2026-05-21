@@ -246,15 +246,10 @@ func newLogsCmd(a *app.App) *cobra.Command {
 			if v, _ := cmd.Flags().GetString("q"); v != "" {
 				q.Query = v
 			}
-			result, err := a.API.GetProjectLogs(cmd.Context(), args[0], q)
-			if err != nil {
-				return err
-			}
-			renderLogsList(a.Output, result)
-			return nil
+			return runLogsQuery(cmd, a, args[0], q)
 		},
 	}
-	cmd.Flags().String("limit", "100", "Page size (default 100, max 1000)")
+	cmd.Flags().String("limit", "100", "Maximum number of log entries")
 	cmd.Flags().String("since", "", "Start of the window, RFC3339")
 	cmd.Flags().String("until", "", "End of the window, RFC3339")
 	cmd.Flags().String("q", "", "Search query")
@@ -283,34 +278,48 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 			defer signal.Stop(sigCh)
 
 			for {
-				result, err := a.API.GetProjectLogs(cmd.Context(), args[0], api.LogsQuery{
-					Since: since,
-					Limit: 1000,
-				})
-				if err != nil {
-					return err
-				}
-
-				for _, l := range result {
-					key := l.RequestId.String() + l.Message
-					if _, dup := seen[key]; dup {
-						continue
-					}
-					seen[key] = struct{}{}
-
-					switch {
-					case a.Output.Format == output.FormatYAML:
-						a.Output.Text("---")
-						a.Output.Structured(l)
-					case a.Output.IsStructured():
-						a.Output.Structured(l)
-					default:
-						a.Output.Text("[%s] %s: %s", l.Timestamp.Format(time.RFC3339), l.Priority, l.Message)
+				cursor := ""
+				seenCursors := map[string]struct{}{}
+				for {
+					page, err := a.API.GetProjectLogsPage(cmd.Context(), args[0], api.LogsQuery{
+						Since:    since,
+						Cursor:   cursor,
+						PageSize: 1000,
+					})
+					if err != nil {
+						return err
 					}
 
-					if l.Timestamp.After(since) {
-						since = l.Timestamp.Add(time.Millisecond)
+					for _, l := range page.Items {
+						key := l.RequestId.String() + l.Message
+						if _, dup := seen[key]; dup {
+							continue
+						}
+						seen[key] = struct{}{}
+
+						switch {
+						case a.Output.Format == output.FormatYAML:
+							a.Output.Text("---")
+							a.Output.Structured(l)
+						case a.Output.IsStructured():
+							a.Output.Structured(l)
+						default:
+							a.Output.Text("[%s] %s: %s", l.Timestamp.Format(time.RFC3339), l.Priority, l.Message)
+						}
+
+						if l.Timestamp.After(since) {
+							since = l.Timestamp.Add(time.Millisecond)
+						}
 					}
+
+					if page.NextCursor == "" {
+						break
+					}
+					if _, seen := seenCursors[page.NextCursor]; seen {
+						break
+					}
+					seenCursors[page.NextCursor] = struct{}{}
+					cursor = page.NextCursor
 				}
 
 				if len(seen) > 5000 {
@@ -370,13 +379,7 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 				}
 				q.Until = t
 			}
-
-			result, err := a.API.GetProjectLogs(cmd.Context(), args[0], q)
-			if err != nil {
-				return err
-			}
-			renderLogsList(a.Output, result)
-			return nil
+			return runLogsQuery(cmd, a, args[0], q)
 		},
 	}
 	cmd.Flags().String("limit", "100", "Maximum number of results")
@@ -397,6 +400,70 @@ func parseUintFlag(s string) (int, error) {
 		return 0, fmt.Errorf("must be non-negative")
 	}
 	return n, nil
+}
+
+func runLogsQuery(cmd *cobra.Command, a *app.App, projectID string, q api.LogsQuery) error {
+	if a.Output.IsStructured() {
+		result, err := a.API.GetProjectLogs(cmd.Context(), projectID, q)
+		if err != nil {
+			return err
+		}
+		renderLogsList(a.Output, result)
+		return nil
+	}
+
+	printed := false
+	remaining := q.Limit
+	seenCursors := map[string]struct{}{}
+	if q.Cursor != "" {
+		seenCursors[q.Cursor] = struct{}{}
+	}
+	for {
+		pageQuery := q
+		if q.Limit > 0 {
+			if remaining <= 0 {
+				break
+			}
+			pageSize := 1000
+			if q.PageSize > 0 {
+				pageSize = min(q.PageSize, 1000)
+			}
+			pageQuery.PageSize = min(remaining, pageSize)
+		}
+		page, err := a.API.GetProjectLogsPage(cmd.Context(), projectID, pageQuery)
+		if err != nil {
+			return err
+		}
+		if page == nil {
+			break
+		}
+		items := page.Items
+		if q.Limit > 0 && len(items) > remaining {
+			items = items[:remaining]
+		}
+		if len(items) > 0 {
+			renderLogsList(a.Output, items)
+			printed = true
+		}
+		if q.Limit > 0 {
+			remaining -= len(items)
+			if remaining <= 0 {
+				break
+			}
+		}
+		if page.NextCursor == "" {
+			break
+		}
+		if _, seen := seenCursors[page.NextCursor]; seen {
+			break
+		}
+		seenCursors[page.NextCursor] = struct{}{}
+		q.Cursor = page.NextCursor
+	}
+	if !printed {
+		renderLogsList(a.Output, nil)
+	}
+	return nil
 }
 
 // --- Renderers ---

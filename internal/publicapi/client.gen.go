@@ -540,8 +540,11 @@ type GetProjectLogsParams struct {
 	Until *time.Time `form:"until,omitempty" json:"until,omitempty"`
 
 	// Q Free-text filter on log lines.
-	Q     *string `form:"q,omitempty" json:"q,omitempty"`
-	Limit *int    `form:"limit,omitempty" json:"limit,omitempty"`
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// Cursor Cursor for the next page.
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // CreateProjectRuleParams defines parameters for CreateProjectRule.
@@ -2865,6 +2868,18 @@ func NewGetProjectLogsRequest(server string, project string, params *GetProjectL
 		if params.Q != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "q", *params.Q, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
