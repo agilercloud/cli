@@ -16,9 +16,9 @@ func TestNextCursorFromHeaders(t *testing.T) {
 	}
 }
 
-func TestNextCursorFromHeadersMissing(t *testing.T) {
+func TestNextCursorFromHeadersIgnoresOtherRels(t *testing.T) {
 	headers := http.Header{}
-	headers.Add("Link", `</v1/projects/proj/logs?cursor=prev>; rel="prev"`)
+	headers.Add("Link", `</v1/projects/proj/logs>; rel="alternate"`)
 
 	if got := nextCursorFromHeaders(headers); got != "" {
 		t.Fatalf("nextCursorFromHeaders() = %q, want empty", got)
