@@ -38,7 +38,10 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 	setCmd := &cobra.Command{
 		Use:   "set <name> <value>",
 		Short: "Create or update an environment variable",
-		Args:  cobra.ExactArgs(2),
+		Long:  "Create or update an environment variable for the configured project. The name is normalized to upper case. Use --sensitive to mark the value as sensitive; sensitive values are hidden from variables list output.",
+		Example: `  agiler variables set DATABASE_URL postgres://...
+  agiler variables set API_KEY secret --sensitive`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {

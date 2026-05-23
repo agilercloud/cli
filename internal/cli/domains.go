@@ -37,7 +37,10 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 	addCmd := &cobra.Command{
 		Use:   "add <domain>",
 		Short: "Add a domain to a project",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Attach a custom domain to the configured project. Use --primary to make it the project's primary domain at the same time.",
+		Example: `  agiler domains add example.com
+  agiler domains add www.example.com --primary`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {

@@ -50,7 +50,10 @@ func newRulesCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "create [json-file]",
 		Short: "Create a project rule (reads JSON from file or stdin)",
-		Args:  cobra.RangeArgs(0, 1),
+		Long:  "Create a project rule from a JSON definition. The JSON can be passed as a file path or piped via stdin. Browse the platform rule catalog with agiler rules templates options to see the available conditions and actions.",
+		Example: `  agiler rules create ./rule.json
+  cat rule.json | agiler rules create`,
+		Args: cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
@@ -82,7 +85,10 @@ func newRulesCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "update <rule-id> [json-file]",
 		Short: "Update a project rule (reads JSON from file or stdin)",
-		Args:  cobra.RangeArgs(1, 2),
+		Long:  "Update an existing project rule from a JSON definition. The JSON can be passed as a file path or piped via stdin.",
+		Example: `  agiler rules update <rule-id> ./rule.json
+  cat rule.json | agiler rules update <rule-id>`,
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {

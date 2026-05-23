@@ -63,8 +63,10 @@ func newWorkspacesCreateCmd(a *app.App) *cobra.Command {
 	var name string
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a workspace",
+		Use:     "create",
+		Short:   "Create a workspace",
+		Long:    "Create a new workspace. The caller becomes its first member with the Owner role.",
+		Example: `  agiler workspaces create --name acme`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := a.API.CreateWorkspace(cmd.Context(), api.CreateWorkspaceInput{Name: name})
 			if err != nil {

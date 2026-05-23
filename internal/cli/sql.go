@@ -45,8 +45,11 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "execute [query]",
 		Short: "Execute a SQL statement against a project database",
-		Long:  "Execute SQL. Provide the statement as an argument, or pipe it via stdin.",
-		Args:  cobra.RangeArgs(0, 1),
+		Long:  "Execute a SQL statement against the configured project's database. The statement can be passed as an argument or piped via stdin. Use --read-only to wrap execution in a read-only transaction. Use --async to submit without blocking; the command then polls until the statement leaves the pending state or --poll-timeout elapses.",
+		Example: `  agiler sql execute "select count(*) from users"
+  agiler sql execute --read-only --timeout 30 "select * from orders limit 10"
+  echo "vacuum analyze" | agiler sql execute --async`,
+		Args: cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
@@ -91,7 +94,11 @@ func newSQLHistoryCmd(a *app.App) *cobra.Command {
 		Use:     "history",
 		Aliases: []string{"list", "ls"},
 		Short:   "List recent SQL executions for a project",
-		Args:    cobra.NoArgs,
+		Long:    "List recent SQL executions for the configured project. Each entry shows the statement ID, status, the truncated SQL, when it was submitted, and how long it ran.",
+		Example: `  agiler sql history
+  agiler sql history --limit 5
+  agiler sql history --format json`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
@@ -111,9 +118,11 @@ func newSQLHistoryCmd(a *app.App) *cobra.Command {
 
 func newSQLGetCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <statement>",
-		Short: "Fetch one SQL execution by id (with paginated rows)",
-		Args:  cobra.ExactArgs(1),
+		Use:     "get <statement>",
+		Short:   "Fetch one SQL execution by id (with paginated rows)",
+		Long:    "Fetch a single SQL execution by id, including its full SQL text, row counts, error (if any), and a paginated slice of returned rows.",
+		Example: `  agiler sql get 01HXY...`,
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {

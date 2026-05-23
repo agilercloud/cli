@@ -39,9 +39,11 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "create",
-		Short: "Create a manual backup",
-		Args:  cobra.NoArgs,
+		Use:     "create",
+		Short:   "Create a manual backup",
+		Long:    "Create a manual backup of the configured project. Manual backups don't count against the retention policy's automatic-backup cap, but they are still subject to the retention window.",
+		Example: `  agiler backups create`,
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
@@ -87,7 +89,11 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	restoreCmd := &cobra.Command{
 		Use:   "restore <backup-id>",
 		Short: "Restore a backup",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Restore the configured project to the state captured by the given backup. This replaces the live database and object storage with the backup's contents. Use --drain-requests to wait for in-flight requests to finish before starting the restore. The command requires confirmation; pass --yes to skip.",
+		Example: `  agiler backups restore 01HXY...
+  agiler backups restore 01HXY... --drain-requests
+  agiler backups restore 01HXY... --yes`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
@@ -117,7 +123,9 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	dl := &cobra.Command{
 		Use:   "download",
 		Short: "Download a backup artifact (database dump or object storage)",
-		Long:  "Download a backup as a database dump or as the project's object-storage snapshot. The artifact kind is chosen by subcommand.",
+		Long:  "Download a backup artifact. A backup includes both a database dump and an object-storage snapshot; choose which to download via the database or storage subcommand.",
+		Example: `  agiler backups download database 01HXY... -o backup.sql
+  agiler backups download storage 01HXY... -o storage.tar.gz`,
 	}
 
 	dlDB := &cobra.Command{

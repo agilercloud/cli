@@ -143,7 +143,11 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upload <remote-path> <local-path>",
 		Short: "Upload a file or directory to a project",
-		Args:  cobra.ExactArgs(2),
+		Long:  "Upload a file or directory to the configured project. Directory uploads are recursive and skip files that match the remote in size and mtime; use --force to disable the skip. By default, uploads fail if the remote destination already exists; pass --overwrite to replace it.",
+		Example: `  agiler files upload /index.html ./index.html
+  agiler files upload --overwrite /app.js ./build/app.js
+  agiler files upload /static ./public`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			projectID, err := requireProjectID(a)
@@ -285,7 +289,11 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <path>",
 		Short: "Download a file or directory from a project",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Download a file or directory from the configured project. With no -o flag, a single file streams to stdout; -o writes to a path. For directories, -o is required and downloads recursively, skipping files that match remote size and mtime.",
+		Example: `  agiler files get /index.html
+  agiler files get /index.html -o ./index.html
+  agiler files get /static -o ./public`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			projectID, err := requireProjectID(a)

@@ -70,6 +70,10 @@ func newProjectsCreateCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new project",
+		Long:  "Create a new project. --name, --region, and --runtime are required. Use agiler regions list to discover available regions, and agiler runtimes list to discover available runtimes.",
+		Example: `  agiler regions list
+  agiler runtimes list
+  agiler projects create --name api --region us-east-1 --runtime node-20`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			in := api.CreateProjectInput{
 				Name:    name,
@@ -103,8 +107,11 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <project>",
 		Short: "Update a project",
-		Long: "Update a project's mutable fields. The root --workspace flag scopes which projects can be addressed; " +
-			"to move the project into a different workspace, use --target-workspace.",
+		Long:  "Update fields on an existing project. Pass only the flags whose values should change; omitted flags are left untouched. Use --target-workspace to move the project to a different workspace.",
+		Example: `  agiler projects update <pid> --name api-prod
+  agiler projects update <pid> --runtime node-22
+  agiler projects update <pid> --target-workspace <wid>
+  agiler projects update <pid> --active=false`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProjectIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -161,8 +168,11 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 
 func newProjectsDeleteCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "delete <project>",
-		Short:             "Delete a project",
+		Use:   "delete <project>",
+		Short: "Delete a project",
+		Long:  "Delete a project and all of its resources. The command requires confirmation; pass --yes to skip.",
+		Example: `  agiler projects delete <pid>
+  agiler projects delete <pid> --yes`,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProjectIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -185,7 +195,10 @@ func newUsageCmd(a *app.App) *cobra.Command {
 		Use:   "usage",
 		Short: "Get project usage statistics",
 		Long:  "Fetch project usage bucketed by --granularity (hour|day|week|month). --since/--until accept RFC3339 timestamps or durations (e.g. 1h, 24h); --limit caps page size.",
-		Args:  cobra.NoArgs,
+		Example: `  agiler usage
+  agiler usage --granularity hour --since 24h
+  agiler usage --granularity month --since 2026-01-01T00:00:00Z`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
@@ -271,7 +284,11 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tail",
 		Short: "Stream project logs in real-time",
-		Args:  cobra.NoArgs,
+		Long:  "Stream project logs in real time, polling on --interval. New entries print as they arrive. Press Ctrl-C to stop. Use --since to backfill before tailing forward.",
+		Example: `  agiler logs tail
+  agiler logs tail --since 5m
+  agiler logs tail --interval 5s --format json`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
@@ -376,7 +393,11 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search project logs",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Search project logs for entries matching <query>. The query is a substring match against the log message. Use --since and --until to constrain the window; both accept RFC3339 or a duration like 1h.",
+		Example: `  agiler logs search "panic"
+  agiler logs search --since 24h "timeout"
+  agiler logs search --limit 50 "500"`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
