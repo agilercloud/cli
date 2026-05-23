@@ -39,6 +39,8 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 	var readOnly bool
 	var timeout int
 	var async bool
+	var pollInterval time.Duration
+	var pollTimeout time.Duration
 
 	cmd := &cobra.Command{
 		Use:   "execute [query]",
@@ -66,7 +68,7 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 
 			result := res.Statement
 			if res.Pending {
-				final, err := pollUntilDone(cmd.Context(), a, projectID, result.ID)
+				final, err := pollUntilDone(cmd.Context(), a, projectID, result.ID, pollInterval, pollTimeout)
 				if err != nil {
 					return err
 				}
@@ -78,6 +80,8 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 	cmd.Flags().BoolVar(&readOnly, "read-only", false, "Wrap execution in a read-only transaction")
 	cmd.Flags().IntVar(&timeout, "timeout", 0, "Per-statement timeout in seconds (server-side)")
 	cmd.Flags().BoolVar(&async, "async", false, "Send Prefer: respond-async; poll until complete")
+	cmd.Flags().DurationVar(&pollInterval, "poll-interval", time.Second, "Poll interval when waiting for async SQL completion")
+	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 10*time.Minute, "Maximum wait when --async polls for completion")
 	return cmd
 }
 
@@ -158,11 +162,11 @@ func readSQLQuery(a *app.App, args []string) (string, error) {
 	return query, nil
 }
 
-// pollUntilDone polls GET /sql/statements/{id} every second for up to
-// 10 minutes (well past WorkerTimeout) until status leaves "pending".
-// Returns the final statement; the caller decides how to render it.
-func pollUntilDone(ctx context.Context, a *app.App, projectID, stmtID string) (api.SQLStatement, error) {
-	deadline := time.Now().Add(10 * time.Minute)
+// pollUntilDone polls GET /sql/statements/{id} on the given interval until
+// status leaves "pending" or timeout elapses. Returns the final statement;
+// the caller decides how to render it.
+func pollUntilDone(ctx context.Context, a *app.App, projectID, stmtID string, interval, timeout time.Duration) (api.SQLStatement, error) {
+	deadline := time.Now().Add(timeout)
 
 	for {
 		s, err := a.API.GetSQLStatement(ctx, projectID, stmtID)
@@ -178,7 +182,7 @@ func pollUntilDone(ctx context.Context, a *app.App, projectID, stmtID string) (a
 		select {
 		case <-ctx.Done():
 			return *s, ctx.Err()
-		case <-time.After(time.Second):
+		case <-time.After(interval):
 		}
 	}
 }

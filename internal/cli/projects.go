@@ -184,7 +184,7 @@ func newUsageCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "usage",
 		Short: "Get project usage statistics",
-		Long:  "Fetch project usage bucketed by --granularity (hour|day|week|month). --since/--until accept RFC3339 timestamps; --limit caps page size.",
+		Long:  "Fetch project usage bucketed by --granularity (hour|day|week|month). --since/--until accept RFC3339 timestamps or durations (e.g. 1h, 24h); --limit caps page size.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
@@ -196,14 +196,14 @@ func newUsageCmd(a *app.App) *cobra.Command {
 				q.Limit = v
 			}
 			if v, _ := cmd.Flags().GetString("since"); v != "" {
-				t, err := time.Parse(time.RFC3339, v)
+				t, err := parseTimeFlag(v, a.Clock.Now())
 				if err != nil {
 					return fmt.Errorf("invalid --since: %w", err)
 				}
 				q.Since = t
 			}
 			if v, _ := cmd.Flags().GetString("until"); v != "" {
-				t, err := time.Parse(time.RFC3339, v)
+				t, err := parseTimeFlag(v, a.Clock.Now())
 				if err != nil {
 					return fmt.Errorf("invalid --until: %w", err)
 				}
@@ -221,8 +221,8 @@ func newUsageCmd(a *app.App) *cobra.Command {
 		},
 	}
 	cmd.Flags().Int("limit", 0, "Page size (0 = server default, max 365)")
-	cmd.Flags().String("since", "", "Start of the window, RFC3339 (e.g. 2026-04-01T00:00:00Z)")
-	cmd.Flags().String("until", "", "End of the window, RFC3339")
+	cmd.Flags().String("since", "", "Start of the window (RFC3339 or duration like 1h, 24h)")
+	cmd.Flags().String("until", "", "End of the window (RFC3339 or duration like 1h, 24h)")
 	cmd.Flags().String("granularity", "day", "Bucket size: hour|day|week|month (default day)")
 	return cmd
 }
@@ -243,29 +243,25 @@ func newLogsCmd(a *app.App) *cobra.Command {
 				q.Limit = v
 			}
 			if v, _ := cmd.Flags().GetString("since"); v != "" {
-				t, err := time.Parse(time.RFC3339, v)
+				t, err := parseTimeFlag(v, a.Clock.Now())
 				if err != nil {
 					return fmt.Errorf("invalid --since: %w", err)
 				}
 				q.Since = t
 			}
 			if v, _ := cmd.Flags().GetString("until"); v != "" {
-				t, err := time.Parse(time.RFC3339, v)
+				t, err := parseTimeFlag(v, a.Clock.Now())
 				if err != nil {
 					return fmt.Errorf("invalid --until: %w", err)
 				}
 				q.Until = t
 			}
-			if v, _ := cmd.Flags().GetString("query"); v != "" {
-				q.Query = v
-			}
 			return runLogsQuery(cmd, a, projectID, q)
 		},
 	}
 	cmd.Flags().Int("limit", 0, "Maximum entries returned (0 = server default)")
-	cmd.Flags().String("since", "", "Start of the window, RFC3339")
-	cmd.Flags().String("until", "", "End of the window, RFC3339")
-	cmd.Flags().String("query", "", "Search query")
+	cmd.Flags().String("since", "", "Start of the window (RFC3339 or duration like 1h, 24h)")
+	cmd.Flags().String("until", "", "End of the window (RFC3339 or duration like 1h, 24h)")
 	cmd.AddCommand(newLogsTailCmd(a))
 	cmd.AddCommand(newLogsSearchCmd(a))
 	return cmd
@@ -287,7 +283,15 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 				return fmt.Errorf("invalid interval: %w", err)
 			}
 
+			sinceFlag, _ := cmd.Flags().GetString("since")
 			since := a.Clock.Now().UTC()
+			if sinceFlag != "" {
+				t, err := parseTimeFlag(sinceFlag, a.Clock.Now())
+				if err != nil {
+					return fmt.Errorf("invalid --since: %w", err)
+				}
+				since = t.UTC()
+			}
 			seen := map[string]struct{}{}
 
 			sigCh := make(chan os.Signal, 1)
@@ -352,6 +356,7 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 		},
 	}
 	cmd.Flags().String("interval", "2s", "Poll interval")
+	cmd.Flags().String("since", "", "Start time (RFC3339 or duration like 5m, 1h); default: now")
 	return cmd
 }
 
