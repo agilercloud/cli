@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/agilercloud/cli/internal/api"
@@ -28,18 +29,23 @@ func newNotificationsCmd(a *app.App) *cobra.Command {
 		},
 	})
 
-	cmd.AddCommand(&cobra.Command{
+	deleteCmd := &cobra.Command{
 		Use:   "delete <notification-id>",
 		Short: "Delete a notification",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := confirmOrSkip(a, cmd, fmt.Sprintf("Delete notification %s? (y/N) ", args[0])); err != nil {
+				return err
+			}
 			if err := a.API.DeleteNotification(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Notification deleted.")
 			return nil
 		},
-	})
+	}
+	addYesFlag(deleteCmd)
+	cmd.AddCommand(deleteCmd)
 
 	return cmd
 }

@@ -362,13 +362,16 @@ func newFilesListCmd(a *app.App) *cobra.Command {
 }
 
 func newFilesDeleteCmd(a *app.App) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "delete <path>",
 		Short: "Delete a file from a project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
+				return err
+			}
+			if err := confirmOrSkip(a, cmd, fmt.Sprintf("Delete file %s? (y/N) ", args[0])); err != nil {
 				return err
 			}
 			if err := a.API.DeleteProjectFile(cmd.Context(), projectID, args[0]); err != nil {
@@ -378,6 +381,8 @@ func newFilesDeleteCmd(a *app.App) *cobra.Command {
 			return nil
 		},
 	}
+	addYesFlag(cmd)
+	return cmd
 }
 
 // projectFileSource builds the canonical X-Move-Source / X-Copy-Source

@@ -150,11 +150,14 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 }
 
 func newProjectsDeleteCmd(a *app.App) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "delete <project>",
 		Short: "Delete a project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := confirmOrSkip(a, cmd, fmt.Sprintf("Delete project %s? (y/N) ", args[0])); err != nil {
+				return err
+			}
 			if err := a.API.DeleteProject(cmd.Context(), args[0]); err != nil {
 				return err
 			}
@@ -162,6 +165,8 @@ func newProjectsDeleteCmd(a *app.App) *cobra.Command {
 			return nil
 		},
 	}
+	addYesFlag(cmd)
+	return cmd
 }
 
 func newUsageCmd(a *app.App) *cobra.Command {

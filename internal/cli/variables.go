@@ -100,7 +100,7 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 	setCmd.Flags().Bool("sensitive", false, "Mark variable as sensitive")
 	cmd.AddCommand(setCmd)
 
-	cmd.AddCommand(&cobra.Command{
+	deleteCmd := &cobra.Command{
 		Use:   "delete <variable-id>",
 		Short: "Delete an environment variable",
 		Args:  cobra.ExactArgs(1),
@@ -109,13 +109,18 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := confirmOrSkip(a, cmd, fmt.Sprintf("Delete variable %s? (y/N) ", args[0])); err != nil {
+				return err
+			}
 			if err := a.API.DeleteVariable(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Variable deleted.")
 			return nil
 		},
-	})
+	}
+	addYesFlag(deleteCmd)
+	cmd.AddCommand(deleteCmd)
 
 	return cmd
 }

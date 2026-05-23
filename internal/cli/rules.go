@@ -101,7 +101,7 @@ func newRulesCmd(a *app.App) *cobra.Command {
 		},
 	})
 
-	cmd.AddCommand(&cobra.Command{
+	deleteCmd := &cobra.Command{
 		Use:   "delete <rule-id>",
 		Short: "Delete a project rule",
 		Args:  cobra.ExactArgs(1),
@@ -110,13 +110,18 @@ func newRulesCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := confirmOrSkip(a, cmd, fmt.Sprintf("Delete rule %s? (y/N) ", args[0])); err != nil {
+				return err
+			}
 			if err := a.API.DeleteRule(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Rule deleted.")
 			return nil
 		},
-	})
+	}
+	addYesFlag(deleteCmd)
+	cmd.AddCommand(deleteCmd)
 
 	cmd.AddCommand(newRuleTemplatesCmd(a))
 

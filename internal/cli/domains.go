@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
 	"github.com/agilercloud/cli/internal/output"
@@ -78,7 +80,7 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 		},
 	})
 
-	cmd.AddCommand(&cobra.Command{
+	deleteCmd := &cobra.Command{
 		Use:   "delete <domain-id>",
 		Short: "Delete a domain from a project",
 		Args:  cobra.ExactArgs(1),
@@ -87,13 +89,18 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := confirmOrSkip(a, cmd, fmt.Sprintf("Delete domain %s? (y/N) ", args[0])); err != nil {
+				return err
+			}
 			if err := a.API.DeleteDomain(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Domain deleted.")
 			return nil
 		},
-	})
+	}
+	addYesFlag(deleteCmd)
+	cmd.AddCommand(deleteCmd)
 
 	return cmd
 }

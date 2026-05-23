@@ -53,7 +53,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		},
 	})
 
-	cmd.AddCommand(&cobra.Command{
+	deleteCmd := &cobra.Command{
 		Use:   "delete <backup-id>",
 		Short: "Delete a backup",
 		Args:  cobra.ExactArgs(1),
@@ -62,13 +62,18 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := confirmOrSkip(a, cmd, fmt.Sprintf("Delete backup %s? (y/N) ", args[0])); err != nil {
+				return err
+			}
 			if err := a.API.DeleteBackup(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Backup deleted.")
 			return nil
 		},
-	})
+	}
+	addYesFlag(deleteCmd)
+	cmd.AddCommand(deleteCmd)
 
 	restoreCmd := &cobra.Command{
 		Use:   "restore <backup-id>",
@@ -80,6 +85,15 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 				return err
 			}
 			drainRequests, _ := cmd.Flags().GetBool("drain-requests")
+			var prompt string
+			if drainRequests {
+				prompt = fmt.Sprintf("Drain in-flight requests and restore backup %s to project %s? This is irreversible. (y/N) ", args[0], projectID)
+			} else {
+				prompt = fmt.Sprintf("Restore backup %s to project %s? This is irreversible. (y/N) ", args[0], projectID)
+			}
+			if err := confirmOrSkip(a, cmd, prompt); err != nil {
+				return err
+			}
 			if err := a.API.RestoreBackup(cmd.Context(), projectID, args[0], drainRequests); err != nil {
 				return err
 			}
@@ -88,6 +102,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		},
 	}
 	restoreCmd.Flags().Bool("drain-requests", false, "Wait for in-flight requests to drain before restoring")
+	addYesFlag(restoreCmd)
 	cmd.AddCommand(restoreCmd)
 
 	dl := &cobra.Command{
