@@ -48,6 +48,7 @@ func readAPIKey(a *app.App) (string, error) {
 		if !ok {
 			return "", errors.New("interactive input is not a file")
 		}
+		a.Output.Stderr("Generate an API key at https://agiler.io (Settings → API Keys).")
 		_, _ = fmt.Fprint(a.Err, "API key: ")
 		raw, err := readPasswordFn(int(f.Fd()))
 		_, _ = fmt.Fprintln(a.Err)

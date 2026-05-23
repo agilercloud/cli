@@ -41,7 +41,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 
 			// skip API setup for commands that don't need it
 			switch cmd.Name() {
-			case "version", "help", "upgrade", "login":
+			case "version", "help", "upgrade", "login", "logout":
 				return nil
 			}
 			if cmd.Parent() != nil && cmd.Parent().Name() == "config" {
@@ -93,6 +93,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	add("reference", newRuntimesCmd(a))
 
 	add("account", newLoginCmd(a))
+	add("account", newLogoutCmd(a))
 	add("account", newWhoamiCmd(a))
 	add("account", newBillingCmd(a))
 	add("account", newNotificationsCmd(a))

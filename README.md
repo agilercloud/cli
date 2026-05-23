@@ -46,10 +46,10 @@ agiler login                                  # interactive, masked input
 # or, for CI:
 printf '%s' "$AGILER_API_KEY" | agiler login
 
-agiler config set project-id <project-uuid>
 agiler status
-agiler projects list
-agiler logs
+agiler projects list                          # pick a project UUID from the output
+agiler config set project-id <project-uuid>   # set the default
+agiler logs                                   # now hits the chosen project
 ```
 
 Generate an API key in the [Agiler dashboard](https://agiler.io) under *Settings → API Keys*.
@@ -79,6 +79,8 @@ Environment variables `AGILER_API_KEY`, `AGILER_API_BASE`, `AGILER_WORKSPACE_ID`
 Set `AGILER_NO_UPDATE_CHECK=1` to suppress the once-per-day background "newer version available" notification.
 
 Project-scoped commands (`logs`, `sql`, `files`, `backups`, `variables`, `domains`, `rules`, `usage`) target the project resolved from `--project`, `AGILER_PROJECT_ID`, or `project_id` in config. Setting it once in config means you don't repeat the project ID on every command.
+
+Run `agiler config show` to see the resolved config and which source each value came from.
 
 ## Commands
 
@@ -113,6 +115,7 @@ agiler runtimes            List available runtimes
 
 ```
 agiler login               Store an API key (masked input on a TTY, stdin on a pipe)
+agiler logout              Clear the stored API key
 agiler whoami              Show the authenticated user and effective scopes
 agiler billing             View billing state, transactions, statements
 agiler notifications       List and dismiss notifications

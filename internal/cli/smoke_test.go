@@ -98,6 +98,7 @@ func TestHelpCommands(t *testing.T) {
 		"runtimes list --help",
 		"runtimes get --help",
 		"login --help",
+		"logout --help",
 		"whoami --help",
 		"billing --help",
 		"billing status --help",
@@ -113,6 +114,7 @@ func TestHelpCommands(t *testing.T) {
 		"config get --help",
 		"config set --help",
 		"config path --help",
+		"config show --help",
 	}
 	for _, tc := range cases {
 		t.Run(tc, func(t *testing.T) {
