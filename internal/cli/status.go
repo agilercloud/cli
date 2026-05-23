@@ -25,7 +25,7 @@ func newStatusCmd(a *app.App) *cobra.Command {
 				return nil
 			}
 			status := result.Status
-			if status == "ok" {
+			if status == "green" {
 				status = a.Output.OutColor.Green(status)
 			} else {
 				status = a.Output.OutColor.Yellow(status)
