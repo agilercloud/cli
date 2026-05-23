@@ -143,15 +143,15 @@ func renderWorkspaceDetail(w *output.Writer, s api.Workspace) error {
 		w.Text("%s", s.Id)
 		return nil
 	}
-	w.Text("ID:              %s", s.Id)
-	w.Text("Name:            %s", s.Name)
-	w.Text("Role:            %s", s.Role)
-	w.Text("Billing User:    %s", output.YesNo(s.IsBillingUser))
-	w.Text("Billing User ID: %s", s.BillingUserId)
-	w.Text("Require MFA:     %s", output.YesNo(s.RequireMfa))
-	w.Text("MFA Required:    %s", output.YesNo(s.MfaRequiredForCaller))
-	w.Text("Created:         %s", s.CreatedAt.Format(time.RFC3339))
-	w.Text("Updated:         %s", s.UpdatedAt.Format(time.RFC3339))
+	w.Text("%s %s", w.OutColor.Dim("ID:             "), s.Id)
+	w.Text("%s %s", w.OutColor.Dim("Name:           "), s.Name)
+	w.Text("%s %s", w.OutColor.Dim("Role:           "), s.Role)
+	w.Text("%s %s", w.OutColor.Dim("Billing User:   "), output.YesNo(s.IsBillingUser))
+	w.Text("%s %s", w.OutColor.Dim("Billing User ID:"), s.BillingUserId)
+	w.Text("%s %s", w.OutColor.Dim("Require MFA:    "), output.YesNo(s.RequireMfa))
+	w.Text("%s %s", w.OutColor.Dim("MFA Required:   "), output.YesNo(s.MfaRequiredForCaller))
+	w.Text("%s %s", w.OutColor.Dim("Created:        "), s.CreatedAt.Format(time.RFC3339))
+	w.Text("%s %s", w.OutColor.Dim("Updated:        "), s.UpdatedAt.Format(time.RFC3339))
 	return nil
 }
 

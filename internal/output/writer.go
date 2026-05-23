@@ -4,6 +4,7 @@
 package output
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -36,17 +37,36 @@ func ParseFormat(s string) (Format, error) {
 }
 
 // Writer is the per-command output sink. Format and Quiet are configured
-// once at startup; methods take care of the per-format dispatch.
+// once at startup; methods take care of the per-format dispatch. OutColor
+// and ErrColor are independently TTY-tested so a piped stdout can coexist
+// with a colored stderr.
 type Writer struct {
-	Format Format
-	Quiet  bool
-	Out    io.Writer
-	Err    io.Writer
+	Format   Format
+	Quiet    bool
+	Out      io.Writer
+	Err      io.Writer
+	OutColor Color
+	ErrColor Color
 }
 
-// New constructs a Writer for the given format and quiet flag.
+// New constructs a Writer for the given format and quiet flag. Color is
+// auto-disabled for non-text formats and quiet mode.
 func New(format Format, quiet bool, stdout, stderr io.Writer) *Writer {
-	return &Writer{Format: format, Quiet: quiet, Out: stdout, Err: stderr}
+	return NewWithColor(format, quiet, stdout, stderr, false)
+}
+
+// NewWithColor constructs a Writer like New, with an extra knob to force
+// color off even when stdout/stderr are TTYs (e.g. --no-color flag).
+func NewWithColor(format Format, quiet bool, stdout, stderr io.Writer, forceNoColor bool) *Writer {
+	forceOff := forceNoColor || quiet || format != FormatText
+	return &Writer{
+		Format:   format,
+		Quiet:    quiet,
+		Out:      stdout,
+		Err:      stderr,
+		OutColor: NewColor(stdout, forceOff),
+		ErrColor: NewColor(stderr, forceOff),
+	}
 }
 
 // IsStructured reports whether the writer emits a single structured document
@@ -88,12 +108,26 @@ func (w *Writer) Table(headers []string, rows [][]string) {
 			}
 			return
 		}
-		tw := tabwriter.NewWriter(w.Out, 0, 0, 2, ' ', 0)
+		// Render via tabwriter into a buffer with raw headers so column
+		// widths are computed from visible characters, then post-process the
+		// header line to inject color codes once alignment is settled.
+		var buf bytes.Buffer
+		tw := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
 		_, _ = fmt.Fprintln(tw, strings.Join(headers, "\t"))
 		for _, row := range rows {
 			_, _ = fmt.Fprintln(tw, strings.Join(row, "\t"))
 		}
 		_ = tw.Flush()
+		out := buf.Bytes()
+		if w.OutColor.Enabled() {
+			if nl := bytes.IndexByte(out, '\n'); nl >= 0 {
+				headerLine := boldHeaderTokens(string(out[:nl]), w.OutColor)
+				_, _ = io.WriteString(w.Out, headerLine)
+				_, _ = w.Out.Write(out[nl:])
+				return
+			}
+		}
+		_, _ = w.Out.Write(out)
 	}
 }
 
@@ -194,6 +228,34 @@ func tableToObjects(headers []string, rows [][]string) []map[string]string {
 		out[i] = m
 	}
 	return out
+}
+
+// boldHeaderTokens wraps each whitespace-separated token in c.Bold codes
+// while preserving the original column spacing. tabwriter has already
+// computed alignment based on the raw (uncolored) widths.
+func boldHeaderTokens(line string, c Color) string {
+	var b strings.Builder
+	b.Grow(len(line) + 16)
+	i := 0
+	for i < len(line) {
+		j := i
+		for j < len(line) && (line[j] == ' ' || line[j] == '\t') {
+			j++
+		}
+		if j > i {
+			b.WriteString(line[i:j])
+			i = j
+		}
+		j = i
+		for j < len(line) && line[j] != ' ' && line[j] != '\t' {
+			j++
+		}
+		if j > i {
+			b.WriteString(c.Bold(line[i:j]))
+			i = j
+		}
+	}
+	return b.String()
 }
 
 func firstColumn(rows [][]string) []string {

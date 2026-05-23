@@ -24,7 +24,13 @@ func newStatusCmd(a *app.App) *cobra.Command {
 				a.Output.Structured(result)
 				return nil
 			}
-			a.Output.Text("status: %s", result.Status)
+			status := result.Status
+			if status == "ok" {
+				status = a.Output.OutColor.Green(status)
+			} else {
+				status = a.Output.OutColor.Yellow(status)
+			}
+			a.Output.Text("status: %s", status)
 			return nil
 		},
 	}

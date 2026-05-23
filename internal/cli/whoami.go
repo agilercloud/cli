@@ -35,14 +35,14 @@ func renderWhoami(w *output.Writer, u api.SelfUser) error {
 		w.Structured(u)
 		return nil
 	}
-	w.Text("User:    %s", u.Email)
-	w.Text("Name:    %s", u.Name)
-	w.Text("ID:      %s", u.Id)
-	w.Text("Created: %s", u.CreatedAt.Format(time.RFC3339))
+	w.Text("%s %s", w.OutColor.Dim("User:   "), u.Email)
+	w.Text("%s %s", w.OutColor.Dim("Name:   "), u.Name)
+	w.Text("%s %s", w.OutColor.Dim("ID:     "), u.Id)
+	w.Text("%s %s", w.OutColor.Dim("Created:"), u.CreatedAt.Format(time.RFC3339))
 	if len(u.EffectiveScopes) == 0 {
-		w.Text("Scopes:  (none)")
+		w.Text("%s (none)", w.OutColor.Dim("Scopes: "))
 	} else {
-		w.Text("Scopes:  %s", strings.Join(u.EffectiveScopes, ", "))
+		w.Text("%s %s", w.OutColor.Dim("Scopes: "), strings.Join(u.EffectiveScopes, ", "))
 	}
 	return nil
 }

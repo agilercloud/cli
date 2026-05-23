@@ -70,9 +70,9 @@ func renderRegionDetail(w *output.Writer, r api.Region) error {
 		w.Structured(r)
 		return nil
 	}
-	w.Text("ID:          %s", r.Id)
-	w.Text("Description: %s", r.Description)
-	w.Text("Created:     %s", r.CreatedAt.Format(time.RFC3339))
-	w.Text("Updated:     %s", r.UpdatedAt.Format(time.RFC3339))
+	w.Text("%s %s", w.OutColor.Dim("ID:         "), r.Id)
+	w.Text("%s %s", w.OutColor.Dim("Description:"), r.Description)
+	w.Text("%s %s", w.OutColor.Dim("Created:    "), r.CreatedAt.Format(time.RFC3339))
+	w.Text("%s %s", w.OutColor.Dim("Updated:    "), r.UpdatedAt.Format(time.RFC3339))
 	return nil
 }

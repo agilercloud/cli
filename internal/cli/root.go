@@ -61,6 +61,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.PersistentFlags().StringVar(&a.OutputFormat, "format", "", "Output format: text|json|yaml|csv|tsv (default text)")
 	root.PersistentFlags().BoolVarP(&a.OutputQuiet, "quiet", "q", false, "Minimal output (IDs only)")
 	root.PersistentFlags().BoolVar(&a.FlagDebug, "debug", false, "Log HTTP requests and responses to stderr")
+	root.PersistentFlags().BoolVar(&a.FlagNoColor, "no-color", false, "Disable ANSI color output")
 
 	_ = root.RegisterFlagCompletionFunc("project", completeProjectIDs(a))
 	_ = root.RegisterFlagCompletionFunc("workspace", completeWorkspaceIDs(a))
@@ -114,6 +115,12 @@ func Run(a *app.App, ctx context.Context, args []string) int {
 	root.SetIn(a.In)
 	root.SetOut(a.Out)
 	root.SetErr(a.Err)
+	// Pre-parse persistent flags so the error prefix below honors --no-color
+	// even for failures that short-circuit before PersistentPreRunE (e.g.
+	// unknown commands, flag-parse errors).
+	_ = root.ParseFlags(args)
+	_ = initOutput(a)
+	root.SetErrPrefix(a.Output.ErrColor.Red("Error:"))
 	if err := root.ExecuteContext(ctx); err != nil {
 		return 1
 	}
@@ -170,6 +177,6 @@ func initOutput(a *app.App) error {
 		}
 		format = f
 	}
-	a.Output = output.New(format, a.OutputQuiet, a.Out, a.Err)
+	a.Output = output.NewWithColor(format, a.OutputQuiet, a.Out, a.Err, a.FlagNoColor)
 	return nil
 }

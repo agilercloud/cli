@@ -38,6 +38,8 @@ type App struct {
 	FlagProjectID   string
 	// FlagDebug enables HTTP request/response logging to Err.
 	FlagDebug bool
+	// FlagNoColor disables ANSI color output regardless of TTY detection.
+	FlagNoColor bool
 
 	// OutputFormat is the raw --format flag value (parsed in initOutput);
 	// OutputQuiet is the raw --quiet flag value.

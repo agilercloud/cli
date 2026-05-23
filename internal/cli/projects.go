@@ -527,15 +527,15 @@ func renderProjectDetail(w *output.Writer, p api.ProjectDetail) error {
 		w.Text("%s", p.Id)
 		return nil
 	}
-	w.Text("ID:        %s", p.Id)
-	w.Text("Name:      %s", p.Name)
-	w.Text("Status:    %s", p.Status)
-	w.Text("Active:    %s", output.YesNo(p.Active))
-	w.Text("Region:    %s", p.Region)
-	w.Text("Runtime:   %s", p.Runtime)
-	w.Text("Workspace: %s", p.WorkspaceId)
-	w.Text("Created:   %s", p.CreatedAt.Format(time.RFC3339))
-	w.Text("Updated:   %s", p.UpdatedAt.Format(time.RFC3339))
+	w.Text("%s %s", w.OutColor.Dim("ID:       "), p.Id)
+	w.Text("%s %s", w.OutColor.Dim("Name:     "), p.Name)
+	w.Text("%s %s", w.OutColor.Dim("Status:   "), p.Status)
+	w.Text("%s %s", w.OutColor.Dim("Active:   "), output.YesNo(p.Active))
+	w.Text("%s %s", w.OutColor.Dim("Region:   "), p.Region)
+	w.Text("%s %s", w.OutColor.Dim("Runtime:  "), p.Runtime)
+	w.Text("%s %s", w.OutColor.Dim("Workspace:"), p.WorkspaceId)
+	w.Text("%s %s", w.OutColor.Dim("Created:  "), p.CreatedAt.Format(time.RFC3339))
+	w.Text("%s %s", w.OutColor.Dim("Updated:  "), p.UpdatedAt.Format(time.RFC3339))
 	return nil
 }
 
