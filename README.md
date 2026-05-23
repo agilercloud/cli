@@ -136,6 +136,8 @@ Run `agiler <command> --help` for details on any subcommand.
 
 Text output uses subtle ANSI color when stdout (or stderr, for error messages) is a terminal: red error prefixes, bold table headers, dim detail-view labels, and green/yellow status badges. Color is auto-disabled when output is piped or redirected, when the `NO_COLOR` environment variable is set, when `--no-color` is passed, or when `--quiet` is used. Structured formats (`--format=json|yaml|csv|tsv`) are always plaintext.
 
+Pass `--progress` to `backups download`, `files get`, or `billing statement` for a streaming progress indicator on stderr. Auto-suppressed when stderr is piped or when writing to stdout.
+
 ## Debugging
 
 `--debug` logs each outgoing HTTP request and response to stderr, with the Authorization header redacted. Useful for diagnosing unexpected 4xx/5xx responses.

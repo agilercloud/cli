@@ -137,6 +137,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		},
 	}
 	dlDB.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
+	dlDB.Flags().Bool("progress", false, "Show a streaming progress indicator on stderr")
 
 	dlStorage := &cobra.Command{
 		Use:   "storage <backup-id>",
@@ -147,6 +148,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		},
 	}
 	dlStorage.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
+	dlStorage.Flags().Bool("progress", false, "Show a streaming progress indicator on stderr")
 
 	dl.AddCommand(dlDB, dlStorage)
 	cmd.AddCommand(dl)
@@ -251,6 +253,7 @@ func runBackupDownload(cmd *cobra.Command, a *app.App, args []string, kind api.B
 		return err
 	}
 	outputPath, _ := cmd.Flags().GetString("output")
+	showProgress, _ := cmd.Flags().GetBool("progress")
 	resp, err := a.API.DownloadBackup(cmd.Context(), projectID, args[0], kind)
 	if err != nil {
 		return err
@@ -264,11 +267,23 @@ func runBackupDownload(cmd *cobra.Command, a *app.App, args []string, kind api.B
 		return nil
 	}
 
-	n, err := writeStreamAtomic(outputPath, resp.Body)
+	body := io.Reader(resp.Body)
+	var prog *output.ProgressReader
+	if showProgress && a.Output.ErrColor.Enabled() {
+		prog = output.NewProgressReader(resp.Body, a.Err, filepath.Base(outputPath), resp.ContentLength, a.Output.ErrColor)
+		body = prog
+	}
+
+	n, err := writeStreamAtomic(outputPath, body)
+	if prog != nil {
+		prog.Finish(err == nil)
+	}
 	if err != nil {
 		return err
 	}
-	a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
+	if prog == nil {
+		a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
+	}
 	return nil
 }
 

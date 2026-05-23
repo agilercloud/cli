@@ -205,6 +205,10 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 // --- Download ---
 
 func downloadSingleFile(ctx context.Context, client *api.Client, projectID, remotePath, localPath string) error {
+	return downloadSingleFileWithProgress(ctx, client, projectID, remotePath, localPath, nil)
+}
+
+func downloadSingleFileWithProgress(ctx context.Context, client *api.Client, projectID, remotePath, localPath string, prog *progressOptions) error {
 	resp, err := client.GetProjectFile(ctx, projectID, remotePath)
 	if err != nil {
 		return err
@@ -228,14 +232,31 @@ func downloadSingleFile(ctx context.Context, client *api.Client, projectID, remo
 		}
 	}()
 
-	if _, err := io.Copy(tmp, resp.Body); err != nil {
-		return fmt.Errorf("write file: %w", err)
+	body := io.Reader(resp.Body)
+	var pr *output.ProgressReader
+	if prog != nil {
+		pr = output.NewProgressReader(resp.Body, prog.w, filepath.Base(localPath), resp.ContentLength, prog.color)
+		body = pr
 	}
-	if err := tmp.Close(); err != nil {
-		return fmt.Errorf("close temp: %w", err)
+
+	copyErr := func() error {
+		if _, err := io.Copy(tmp, body); err != nil {
+			return fmt.Errorf("write file: %w", err)
+		}
+		if err := tmp.Close(); err != nil {
+			return fmt.Errorf("close temp: %w", err)
+		}
+		if err := os.Rename(tmpPath, localPath); err != nil {
+			return fmt.Errorf("finalize: %w", err)
+		}
+		return nil
+	}()
+
+	if pr != nil {
+		pr.Finish(copyErr == nil)
 	}
-	if err := os.Rename(tmpPath, localPath); err != nil {
-		return fmt.Errorf("finalize: %w", err)
+	if copyErr != nil {
+		return copyErr
 	}
 	cleanup = false
 
@@ -245,6 +266,11 @@ func downloadSingleFile(ctx context.Context, client *api.Client, projectID, remo
 		}
 	}
 	return nil
+}
+
+type progressOptions struct {
+	w     io.Writer
+	color output.Color
 }
 
 func downloadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir string, force bool, stats *syncStats) error {
@@ -303,6 +329,7 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
 			remotePath := args[0]
 			outputPath, _ := cmd.Flags().GetString("output")
 			force, _ := cmd.Flags().GetBool("force")
+			showProgress, _ := cmd.Flags().GetBool("progress")
 
 			entries, listErr := a.API.ListProjectFiles(ctx, projectID, remotePath)
 			isDir := listErr == nil && entries != nil
@@ -346,15 +373,22 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
 				}
 			}
 
-			if err := downloadSingleFile(ctx, a.API, projectID, remotePath, outputPath); err != nil {
+			var prog *progressOptions
+			if showProgress && a.Output.ErrColor.Enabled() {
+				prog = &progressOptions{w: a.Err, color: a.Output.ErrColor}
+			}
+			if err := downloadSingleFileWithProgress(ctx, a.API, projectID, remotePath, outputPath, prog); err != nil {
 				return err
 			}
-			a.Output.Stderr("Downloaded to %s", outputPath)
+			if prog == nil {
+				a.Output.Stderr("Downloaded to %s", outputPath)
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringP("output", "o", "", "Output file or directory path (default: stdout)")
 	cmd.Flags().BoolP("force", "f", false, "Force transfer even if file is unchanged")
+	cmd.Flags().Bool("progress", false, "Show a streaming progress indicator on stderr (single-file downloads only)")
 	return cmd
 }
 

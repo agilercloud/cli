@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -50,6 +51,7 @@ func newBillingCmd(a *app.App) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			outputPath, _ := cmd.Flags().GetString("output")
+			showProgress, _ := cmd.Flags().GetBool("progress")
 			resp, err := a.API.GetBillingStatement(cmd.Context(), args[0])
 			if err != nil {
 				return err
@@ -63,15 +65,28 @@ func newBillingCmd(a *app.App) *cobra.Command {
 				return nil
 			}
 
-			n, err := writeStreamAtomic(outputPath, resp.Body)
+			body := io.Reader(resp.Body)
+			var prog *output.ProgressReader
+			if showProgress && a.Output.ErrColor.Enabled() {
+				prog = output.NewProgressReader(resp.Body, a.Err, filepath.Base(outputPath), resp.ContentLength, a.Output.ErrColor)
+				body = prog
+			}
+
+			n, err := writeStreamAtomic(outputPath, body)
+			if prog != nil {
+				prog.Finish(err == nil)
+			}
 			if err != nil {
 				return err
 			}
-			a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
+			if prog == nil {
+				a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
+			}
 			return nil
 		},
 	}
 	stmt.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
+	stmt.Flags().Bool("progress", false, "Show a streaming progress indicator on stderr")
 	cmd.AddCommand(stmt)
 
 	return cmd
