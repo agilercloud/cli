@@ -297,6 +297,29 @@ type ProjectUsageOutput struct {
 	StorageSize     int       `json:"storage_size"`
 }
 
+// ProjectUsageResponse defines model for ProjectUsageResponse.
+type ProjectUsageResponse struct {
+	Items  []ProjectUsageOutput `json:"items"`
+	Totals ProjectUsageTotals   `json:"totals"`
+}
+
+// ProjectUsageTotals defines model for ProjectUsageTotals.
+type ProjectUsageTotals struct {
+	BackupSize      int `json:"backup_size"`
+	DatabaseSize    int `json:"database_size"`
+	DatatransferOut int `json:"datatransfer_out"`
+	DurationAverage int `json:"duration_average"`
+	DurationTotal   int `json:"duration_total"`
+	RequestsTotal   int `json:"requests_total"`
+	RequestsWorker  int `json:"requests_worker"`
+	Responses1xx    int `json:"responses_1xx"`
+	Responses2xx    int `json:"responses_2xx"`
+	Responses3xx    int `json:"responses_3xx"`
+	Responses4xx    int `json:"responses_4xx"`
+	Responses5xx    int `json:"responses_5xx"`
+	StorageSize     int `json:"storage_size"`
+}
+
 // ProjectVariableOutput defines model for ProjectVariableOutput.
 type ProjectVariableOutput struct {
 	Id        openapi_types.UUID `json:"id"`
@@ -5751,7 +5774,7 @@ func (r GetProjectSQLStatementResponse) ContentType() string {
 type GetProjectUsageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]ProjectUsageOutput
+	JSON200      *ProjectUsageResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
@@ -9180,7 +9203,7 @@ func ParseGetProjectUsageResponse(rsp *http.Response) (*GetProjectUsageResponse,
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []ProjectUsageOutput
+		var dest ProjectUsageResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

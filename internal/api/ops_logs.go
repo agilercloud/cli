@@ -180,5 +180,5 @@ func (c *Client) GetProjectUsage(ctx context.Context, projectID string, q UsageQ
 	if resp.JSON200 == nil {
 		return nil, nil
 	}
-	return *resp.JSON200, nil
+	return resp.JSON200.Items, nil
 }
