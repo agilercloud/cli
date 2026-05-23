@@ -25,6 +25,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// Options bundles optional knobs for NewClient. The zero value is valid
+// and matches the historical NewClient(baseURL, apiKey) behavior.
+type Options struct {
+	// Debug, when non-nil, receives a textual log of every HTTP request
+	// and response made by the client. Intended for the --debug flag;
+	// the Authorization header is redacted before being written.
+	Debug io.Writer
+}
+
 // Client is the agiler API client. It wraps a generated publicapi
 // client (for typed v1 operations) and a plain http.Client (for the
 // unversioned /status health endpoint, which is outside the v1 spec).
@@ -57,9 +66,9 @@ type Client struct {
 // Connection setup and the wait for response headers are still bounded
 // via the transport; once headers arrive, the caller's context.Context
 // is the only deadline on body read.
-func NewClient(baseURL, apiKey string) *Client {
+func NewClient(baseURL, apiKey string, opts Options) *Client {
 	base := strings.TrimSuffix(baseURL, "/") + "/v1"
-	transport := &http.Transport{
+	var transport http.RoundTripper = &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
@@ -69,6 +78,9 @@ func NewClient(baseURL, apiKey string) *Client {
 		ExpectContinueTimeout: 1 * time.Second,
 		MaxIdleConns:          10,
 		IdleConnTimeout:       90 * time.Second,
+	}
+	if opts.Debug != nil {
+		transport = newDebugTransport(transport, opts.Debug)
 	}
 	raw := &http.Client{Transport: transport}
 

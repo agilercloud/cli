@@ -17,7 +17,7 @@ func newCompletionApp(t *testing.T, server *httptest.Server) *app.App {
 	t.Helper()
 	a := &app.App{
 		Config: &config.Config{},
-		API:    api.NewClient(server.URL, "test-key"),
+		API:    api.NewClient(server.URL, "test-key", api.Options{}),
 	}
 	return a
 }

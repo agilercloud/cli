@@ -42,7 +42,7 @@ func TestGetProjectLogsDrainsPages(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, "test-key")
+	client := NewClient(server.URL, "test-key", Options{})
 	got, err := client.GetProjectLogs(context.Background(), "proj", LogsQuery{PageSize: 1})
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +85,7 @@ func TestGetProjectLogsLimitCapsTotalResults(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, "test-key")
+	client := NewClient(server.URL, "test-key", Options{})
 	got, err := client.GetProjectLogs(context.Background(), "proj", LogsQuery{Limit: 3})
 	if err != nil {
 		t.Fatal(err)

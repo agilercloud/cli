@@ -36,6 +36,8 @@ type App struct {
 	FlagAPIBase     string
 	FlagWorkspaceID string
 	FlagProjectID   string
+	// FlagDebug enables HTTP request/response logging to Err.
+	FlagDebug bool
 
 	// OutputFormat is the raw --format flag value (parsed in initOutput);
 	// OutputQuiet is the raw --quiet flag value.

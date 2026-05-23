@@ -39,7 +39,7 @@ func TestFilesMoveSendsXMoveSourceHeader(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	a, _, _ := newTestApp(t)
-	a.API = api.NewClient(srv.URL, "test-key")
+	a.API = api.NewClient(srv.URL, "test-key", api.Options{})
 
 	cmd := newFilesMoveCmd(a)
 	cmd.SetArgs([]string{"docs/a.txt", "docs/b.txt", "--overwrite"})
@@ -87,7 +87,7 @@ func TestFilesCopySendsXCopySourceHeader(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	a, _, _ := newTestApp(t)
-	a.API = api.NewClient(srv.URL, "test-key")
+	a.API = api.NewClient(srv.URL, "test-key", api.Options{})
 
 	cmd := newFilesCopyCmd(a)
 	cmd.SetArgs([]string{"docs/a.txt", "docs/b.txt", "--overwrite"})
@@ -119,7 +119,7 @@ func TestFilesMoveDefaultSetsIfNoneMatch(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	a, _, _ := newTestApp(t)
-	a.API = api.NewClient(srv.URL, "test-key")
+	a.API = api.NewClient(srv.URL, "test-key", api.Options{})
 
 	cmd := newFilesMoveCmd(a)
 	cmd.SetArgs([]string{"docs/a.txt", "docs/b.txt"})
@@ -154,7 +154,7 @@ func TestFilesUploadDefaultSetsIfNoneMatch(t *testing.T) {
 	}
 
 	a, _, _ := newTestApp(t)
-	a.API = api.NewClient(srv.URL, "test-key")
+	a.API = api.NewClient(srv.URL, "test-key", api.Options{})
 
 	cmd := newFilesUploadCmd(a)
 	cmd.SetArgs([]string{"remote.txt", src, "--force"})
@@ -189,7 +189,7 @@ func TestFilesUploadOverwriteClearsIfNoneMatch(t *testing.T) {
 	}
 
 	a, _, _ := newTestApp(t)
-	a.API = api.NewClient(srv.URL, "test-key")
+	a.API = api.NewClient(srv.URL, "test-key", api.Options{})
 
 	cmd := newFilesUploadCmd(a)
 	cmd.SetArgs([]string{"remote.txt", src, "--overwrite", "--force"})

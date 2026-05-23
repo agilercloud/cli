@@ -28,7 +28,7 @@ func TestRestoreBackupDrainRequestsParam(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := NewClient(server.URL, "test-key")
+			client := NewClient(server.URL, "test-key", Options{})
 			if err := client.RestoreBackup(context.Background(), "project_1", "backup_1", tt.drainRequests); err != nil {
 				t.Fatalf("RestoreBackup() error = %v", err)
 			}

@@ -132,6 +132,14 @@ agiler version             Print CLI version
 
 Run `agiler <command> --help` for details on any subcommand.
 
+## Debugging
+
+`--debug` logs each outgoing HTTP request and response to stderr, with the Authorization header redacted. Useful for diagnosing unexpected 4xx/5xx responses.
+
+```sh
+agiler --debug projects list 2>&1 1>/dev/null  # debug output only
+```
+
 ## Shell completion
 
 Generate a completion script for your shell:

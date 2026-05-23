@@ -48,7 +48,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 				return nil
 			}
 
-			return ensureAPI(a)
+			return setupAPI(a, true)
 		},
 		SilenceUsage: true,
 	}
@@ -60,6 +60,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.PersistentFlags().StringVarP(&a.FlagProjectID, "project", "p", "", "Project ID for project-scoped commands (overrides config and AGILER_PROJECT_ID)")
 	root.PersistentFlags().StringVar(&a.OutputFormat, "format", "", "Output format: text|json|yaml|csv|tsv (default text)")
 	root.PersistentFlags().BoolVarP(&a.OutputQuiet, "quiet", "q", false, "Minimal output (IDs only)")
+	root.PersistentFlags().BoolVar(&a.FlagDebug, "debug", false, "Log HTTP requests and responses to stderr")
 
 	_ = root.RegisterFlagCompletionFunc("project", completeProjectIDs(a))
 	_ = root.RegisterFlagCompletionFunc("workspace", completeWorkspaceIDs(a))
@@ -122,8 +123,13 @@ func Run(a *app.App, ctx context.Context, args []string) int {
 // ensureAPI loads config and constructs a.API if it hasn't been done yet.
 // PersistentPreRunE calls it for the normal command path; completion
 // helpers call it on demand because Cobra's __complete entry point does
-// not invoke PersistentPreRunE.
+// not invoke PersistentPreRunE. Completion never enables --debug output —
+// any stderr noise can confuse the shell-completion protocol.
 func ensureAPI(a *app.App) error {
+	return setupAPI(a, false)
+}
+
+func setupAPI(a *app.App, allowDebug bool) error {
 	if a.API != nil {
 		return nil
 	}
@@ -147,7 +153,11 @@ func ensureAPI(a *app.App) error {
 		cfg.ProjectID = a.FlagProjectID
 	}
 	a.Config = cfg
-	a.API = api.NewClient(cfg.APIBase, cfg.APIKey)
+	opts := api.Options{}
+	if allowDebug && a.FlagDebug {
+		opts.Debug = a.Err
+	}
+	a.API = api.NewClient(cfg.APIBase, cfg.APIKey, opts)
 	return nil
 }
 
