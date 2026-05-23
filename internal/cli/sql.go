@@ -15,10 +15,13 @@ import (
 
 // newSQLCmd builds the `agiler sql ...` subcommand tree.
 //
-//	agiler sql execute <project> [query] [--read-only] [--timeout=SECONDS] [--async]
-//	agiler sql history <project> [--limit=N]
-//	agiler sql get <project> <statement>
-//	agiler sql delete <project> <statement>
+//	agiler sql execute [query] [--read-only] [--timeout=SECONDS] [--async]
+//	agiler sql history [--limit=N]
+//	agiler sql get <statement>
+//	agiler sql delete <statement>
+//
+// Each subcommand resolves the project via --project, AGILER_PROJECT_ID, or
+// the project_id config key.
 func newSQLCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sql",
@@ -38,11 +41,15 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 	var async bool
 
 	cmd := &cobra.Command{
-		Use:   "execute <project> [query]",
+		Use:   "execute [query]",
 		Short: "Execute a SQL statement against a project database",
 		Long:  "Execute SQL. Provide the statement as an argument, or pipe it via stdin.",
-		Args:  cobra.RangeArgs(1, 2),
+		Args:  cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			query, err := readSQLQuery(a, args)
 			if err != nil {
 				return err
@@ -52,7 +59,6 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 				in.Timeout = &timeout
 			}
 
-			projectID := args[0]
 			res, err := a.API.RunSQL(cmd.Context(), projectID, in, async)
 			if err != nil {
 				return err
@@ -78,12 +84,16 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 func newSQLHistoryCmd(a *app.App) *cobra.Command {
 	var limit int
 	cmd := &cobra.Command{
-		Use:     "history <project>",
+		Use:     "history",
 		Aliases: []string{"list", "ls"},
 		Short:   "List recent SQL executions for a project",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.ListSQLStatements(cmd.Context(), args[0], limit)
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			result, err := a.API.ListSQLStatements(cmd.Context(), projectID, limit)
 			if err != nil {
 				return err
 			}
@@ -97,11 +107,15 @@ func newSQLHistoryCmd(a *app.App) *cobra.Command {
 
 func newSQLGetCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <project> <statement>",
+		Use:   "get <statement>",
 		Short: "Fetch one SQL execution by id (with paginated rows)",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.GetSQLStatement(cmd.Context(), args[0], args[1])
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			result, err := a.API.GetSQLStatement(cmd.Context(), projectID, args[0])
 			if err != nil {
 				return err
 			}
@@ -112,11 +126,15 @@ func newSQLGetCmd(a *app.App) *cobra.Command {
 
 func newSQLDeleteCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <project> <statement>",
+		Use:   "delete <statement>",
 		Short: "Delete a statement (cancels SQL if it's still pending)",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DeleteSQLStatement(cmd.Context(), args[0], args[1]); err != nil {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			if err := a.API.DeleteSQLStatement(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Statement deleted.")
@@ -126,8 +144,8 @@ func newSQLDeleteCmd(a *app.App) *cobra.Command {
 }
 
 func readSQLQuery(a *app.App, args []string) (string, error) {
-	if len(args) == 2 {
-		return args[1], nil
+	if len(args) == 1 {
+		return args[0], nil
 	}
 	data, err := io.ReadAll(a.In)
 	if err != nil {
@@ -200,7 +218,7 @@ func renderSQLStatement(a *app.App, s api.SQLStatement, asyncHint bool) error {
 		a.Output.Text("Error:        %s", *s.Error)
 	}
 	if asyncHint && s.Status == "pending" {
-		a.Output.Text("Poll: agiler sql get <project> %s", s.ID)
+		a.Output.Text("Poll: agiler sql get %s", s.ID)
 	}
 	if len(s.Rows) > 0 {
 		renderRowsTable(a, s.Columns, s.Rows)

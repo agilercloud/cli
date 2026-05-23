@@ -15,6 +15,17 @@ func configuredWorkspaceID(a *app.App) string {
 	return strings.TrimSpace(a.Config.WorkspaceID)
 }
 
+// requireProjectID returns the effective project ID resolved from --project,
+// AGILER_PROJECT_ID, or config. Returns a friendly error if none is set.
+func requireProjectID(a *app.App) (string, error) {
+	if a != nil && a.Config != nil {
+		if v := strings.TrimSpace(a.Config.ProjectID); v != "" {
+			return v, nil
+		}
+	}
+	return "", fmt.Errorf("no project set: pass --project, set AGILER_PROJECT_ID, or run 'agiler config set project-id <id>'")
+}
+
 func parseWorkspaceID(value string) (uuid.UUID, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {

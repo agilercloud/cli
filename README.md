@@ -43,8 +43,10 @@ agiler upgrade --force      # override refusals (dev build, non-canonical path, 
 
 ```sh
 agiler config set api-key ak_your_key_here
+agiler config set project-id <project-uuid>
 agiler status
 agiler projects list
+agiler logs
 ```
 
 Generate an API key in the [Agiler dashboard](https://agiler.io) under *Settings → API Keys*.
@@ -63,30 +65,58 @@ Config format:
 ```toml
 api_key      = "ak_..."
 api_base     = "https://api.agiler.io"   # optional; defaults to production
-workspace_id = "..."                     # optional; default workspace for project commands
+workspace_id = "..."                     # optional; default workspace
+project_id   = "..."                     # optional; default project for project-scoped commands
 ```
 
-Environment variables `AGILER_API_KEY`, `AGILER_API_BASE`, and `AGILER_WORKSPACE_ID` override config values. Command-line flags `--api-key`, `--api-base`, and `--workspace` override both.
+Environment variables `AGILER_API_KEY`, `AGILER_API_BASE`, `AGILER_WORKSPACE_ID`, and `AGILER_PROJECT_ID` override config values. Command-line flags `--api-key`, `--api-base`, `--workspace`, and `--project`/`-p` override both.
+
+Project-scoped commands (`logs`, `sql`, `files`, `backups`, `variables`, `domains`, `rules`, `usage`) target the project resolved from `--project`, `AGILER_PROJECT_ID`, or `project_id` in config. Setting it once in config means you don't repeat the project ID on every command.
 
 ## Commands
 
+**Project operations** (target the configured project):
+
+```
+agiler logs                Tail or search project logs
+agiler sql                 Execute SQL and inspect prior runs
+agiler files               Browse and transfer project files
+agiler backups             List, create, restore, download backups; manage policy
+agiler variables           Manage environment variables
+agiler domains             Manage custom domains
+agiler rules               Manage project rules (templates at 'rules templates options')
+agiler usage               Project resource usage
+```
+
+**Resources:**
+
+```
+agiler projects            Manage projects (list, get, create, update, delete)
+agiler workspaces          Manage workspaces (list, get, create, members)
+```
+
+**Reference:**
+
+```
+agiler regions             List available regions
+agiler runtimes            List available runtimes
+```
+
+**Account:**
+
+```
+agiler whoami              Show the authenticated user and effective scopes
+agiler billing             View billing state, transactions, statements
+agiler notifications       List and dismiss notifications
+agiler config              Manage CLI configuration
+```
+
+**Maintenance:**
+
 ```
 agiler status              Check API status
-agiler config              Manage CLI configuration
-agiler workspaces          Manage workspaces (list, get, create, members)
-agiler projects            Manage projects (list, get, create, update, delete)
-agiler projects variables  Manage environment variables
-agiler projects domains    Manage custom domains
-agiler projects files      Browse and transfer project files
-agiler projects backups    List, create, restore, download backups
-agiler projects sql        Run SQL queries against a project database
-agiler projects rules      Manage project rules
-agiler projects logs       Tail project logs
-agiler projects usage      Project resource usage
-agiler runtimes            List available runtimes
-agiler regions             List available regions
-agiler rules               Rule templates
 agiler upgrade             Upgrade this CLI to the latest release
+agiler version             Print CLI version
 ```
 
 Run `agiler <command> --help` for details on any subcommand.

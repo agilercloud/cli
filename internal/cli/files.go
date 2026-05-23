@@ -140,14 +140,17 @@ func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir 
 
 func newFilesUploadCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "upload <project> <remote-path> <local-path>",
+		Use:   "upload <remote-path> <local-path>",
 		Short: "Upload a file or directory to a project",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			projectID := args[0]
-			remotePath := args[1]
-			localPath := args[2]
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			remotePath := args[0]
+			localPath := args[1]
 			force, _ := cmd.Flags().GetBool("force")
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
 
@@ -265,13 +268,16 @@ func downloadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDi
 
 func newFilesGetCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <project> <path>",
+		Use:   "get <path>",
 		Short: "Download a file or directory from a project",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			projectID := args[0]
-			remotePath := args[1]
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			remotePath := args[0]
 			outputPath, _ := cmd.Flags().GetString("output")
 			force, _ := cmd.Flags().GetBool("force")
 
@@ -333,15 +339,19 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
 
 func newFilesListCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "list <project> [path]",
+		Use:   "list [path]",
 		Short: "List files in a project directory",
-		Args:  cobra.RangeArgs(1, 2),
+		Args:  cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var sub string
-			if len(args) > 1 {
-				sub = args[1]
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
 			}
-			result, err := a.API.ListProjectFiles(cmd.Context(), args[0], sub)
+			var sub string
+			if len(args) > 0 {
+				sub = args[0]
+			}
+			result, err := a.API.ListProjectFiles(cmd.Context(), projectID, sub)
 			if err != nil {
 				return err
 			}
@@ -353,11 +363,15 @@ func newFilesListCmd(a *app.App) *cobra.Command {
 
 func newFilesDeleteCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <project> <path>",
+		Use:   "delete <path>",
 		Short: "Delete a file from a project",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DeleteProjectFile(cmd.Context(), args[0], args[1]); err != nil {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			if err := a.API.DeleteProjectFile(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("File deleted.")
@@ -382,14 +396,17 @@ func newFilesCopyCmd(a *app.App) *cobra.Command {
 
 func newFilesTransferCmd(a *app.App, name, short, sourceHeader, successText string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   name + " <project> <source> <destination>",
+		Use:   name + " <source> <destination>",
 		Short: short,
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
-			projectID := args[0]
-			source := args[1]
-			destination := args[2]
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			source := args[0]
+			destination := args[1]
 
 			headers := map[string]string{
 				sourceHeader: projectFileSource(source),

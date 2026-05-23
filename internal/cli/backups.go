@@ -19,11 +19,15 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	}
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "list <project>",
+		Use:   "list",
 		Short: "List project backups",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.ListBackups(cmd.Context(), args[0])
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			result, err := a.API.ListBackups(cmd.Context(), projectID)
 			if err != nil {
 				return err
 			}
@@ -33,11 +37,15 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "create <project>",
+		Use:   "create",
 		Short: "Create a manual backup",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if _, err := a.API.CreateBackup(cmd.Context(), args[0]); err != nil {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			if _, err := a.API.CreateBackup(cmd.Context(), projectID); err != nil {
 				return err
 			}
 			a.Output.Text("Backup created.")
@@ -46,11 +54,15 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "delete <project> <backup-id>",
+		Use:   "delete <backup-id>",
 		Short: "Delete a backup",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DeleteBackup(cmd.Context(), args[0], args[1]); err != nil {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			if err := a.API.DeleteBackup(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Backup deleted.")
@@ -59,12 +71,16 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	})
 
 	restoreCmd := &cobra.Command{
-		Use:   "restore <project> <backup-id>",
+		Use:   "restore <backup-id>",
 		Short: "Restore a backup",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			drainRequests, _ := cmd.Flags().GetBool("drain-requests")
-			if err := a.API.RestoreBackup(cmd.Context(), args[0], args[1], drainRequests); err != nil {
+			if err := a.API.RestoreBackup(cmd.Context(), projectID, args[0], drainRequests); err != nil {
 				return err
 			}
 			a.Output.Text("Backup restore initiated.")
@@ -75,10 +91,14 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(restoreCmd)
 
 	dl := &cobra.Command{
-		Use:   "download <project> <backup-id>",
+		Use:   "download <backup-id>",
 		Short: "Download a backup",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			dlType, _ := cmd.Flags().GetString("type")
 			var kind api.BackupArtifact
 			switch dlType {
@@ -91,7 +111,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 			}
 
 			outputPath, _ := cmd.Flags().GetString("output")
-			resp, err := a.API.DownloadBackup(cmd.Context(), args[0], args[1], kind)
+			resp, err := a.API.DownloadBackup(cmd.Context(), projectID, args[0], kind)
 			if err != nil {
 				return err
 			}
@@ -130,11 +150,15 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(dl)
 
 	policy := &cobra.Command{
-		Use:   "policy <project>",
+		Use:   "policy",
 		Short: "Show backup policy",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.GetBackupPolicy(cmd.Context(), args[0])
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			result, err := a.API.GetBackupPolicy(cmd.Context(), projectID)
 			if err != nil {
 				return err
 			}
@@ -143,11 +167,15 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		},
 	}
 
-	policy.AddCommand(&cobra.Command{
-		Use:   "set <project>",
+	policySet := &cobra.Command{
+		Use:   "set",
 		Short: "Update backup policy (--frequency-days, --retention-days)",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			var in api.UpdateBackupPolicy
 			touched := false
 			if cmd.Flags().Changed("frequency-days") {
@@ -163,16 +191,17 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 			if !touched {
 				return fmt.Errorf("provide --frequency-days and/or --retention-days")
 			}
-			policy, err := a.API.SetBackupPolicy(cmd.Context(), args[0], in)
+			policy, err := a.API.SetBackupPolicy(cmd.Context(), projectID, in)
 			if err != nil {
 				return err
 			}
 			renderBackupPolicy(a.Output, *policy)
 			return nil
 		},
-	})
-	policy.PersistentFlags().Int("frequency-days", 0, "Backup frequency in days (0 disables)")
-	policy.PersistentFlags().Int("retention-days", 0, "Backup retention in days")
+	}
+	policySet.Flags().Int("frequency-days", 0, "Backup frequency in days (0 disables)")
+	policySet.Flags().Int("retention-days", 0, "Backup retention in days")
+	policy.AddCommand(policySet)
 
 	cmd.AddCommand(policy)
 

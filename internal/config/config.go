@@ -22,6 +22,7 @@ type Config struct {
 	APIKey      string `toml:"api_key"`
 	APIBase     string `toml:"api_base"`
 	WorkspaceID string `toml:"workspace_id"`
+	ProjectID   string `toml:"project_id"`
 }
 
 // Options controls how a Config is located on disk.
@@ -91,6 +92,9 @@ func Load(opts Options) (*Config, error) {
 	if v := os.Getenv("AGILER_WORKSPACE_ID"); v != "" {
 		cfg.WorkspaceID = v
 	}
+	if v := os.Getenv("AGILER_PROJECT_ID"); v != "" {
+		cfg.ProjectID = v
+	}
 
 	if cfg.APIBase == "" {
 		cfg.APIBase = DefaultAPIBase
@@ -129,8 +133,10 @@ func Set(opts Options, key, value string) error {
 		cfg.APIBase = value
 	case "workspace_id":
 		cfg.WorkspaceID = value
+	case "project_id":
+		cfg.ProjectID = value
 	default:
-		return fmt.Errorf("unknown config key: %s (valid: api-key, api-base, workspace-id)", key)
+		return fmt.Errorf("unknown config key: %s (valid: api-key, api-base, workspace-id, project-id)", key)
 	}
 
 	return Save(opts, cfg)
@@ -150,7 +156,9 @@ func Get(opts Options, key string) (string, error) {
 		return cfg.APIBase, nil
 	case "workspace_id":
 		return cfg.WorkspaceID, nil
+	case "project_id":
+		return cfg.ProjectID, nil
 	default:
-		return "", fmt.Errorf("unknown config key: %s (valid: api-key, api-base, workspace-id)", key)
+		return "", fmt.Errorf("unknown config key: %s (valid: api-key, api-base, workspace-id, project-id)", key)
 	}
 }

@@ -64,6 +64,9 @@ func NewRootCmd(a *app.App) *cobra.Command {
 			if a.FlagWorkspaceID != "" {
 				cfg.WorkspaceID = a.FlagWorkspaceID
 			}
+			if a.FlagProjectID != "" {
+				cfg.ProjectID = a.FlagProjectID
+			}
 			a.Config = cfg
 			a.API = api.NewClient(cfg.APIBase, cfg.APIKey)
 			return nil
@@ -74,22 +77,47 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.PersistentFlags().StringVarP(&a.FlagConfig, "config", "c", "", "Config file path")
 	root.PersistentFlags().StringVar(&a.FlagAPIKey, "api-key", "", "API key (overrides config and AGILER_API_KEY)")
 	root.PersistentFlags().StringVar(&a.FlagAPIBase, "api-base", "", "API base URL (overrides config and AGILER_API_BASE)")
-	root.PersistentFlags().StringVar(&a.FlagWorkspaceID, "workspace", "", "Workspace ID for project commands (overrides config and AGILER_WORKSPACE_ID)")
+	root.PersistentFlags().StringVar(&a.FlagWorkspaceID, "workspace", "", "Workspace ID (overrides config and AGILER_WORKSPACE_ID)")
+	root.PersistentFlags().StringVarP(&a.FlagProjectID, "project", "p", "", "Project ID for project-scoped commands (overrides config and AGILER_PROJECT_ID)")
 	root.PersistentFlags().StringVar(&a.OutputFormat, "format", "", "Output format: text|json|yaml|csv|tsv (default text)")
 	root.PersistentFlags().BoolVarP(&a.OutputQuiet, "quiet", "q", false, "Minimal output (IDs only)")
 
-	root.AddCommand(newStatusCmd(a))
-	root.AddCommand(newConfigCmd(a))
-	root.AddCommand(newWorkspacesCmd(a))
-	root.AddCommand(newProjectsCmd(a))
-	root.AddCommand(newRuntimesCmd(a))
-	root.AddCommand(newRegionsCmd(a))
-	root.AddCommand(newRulesCmd(a))
-	root.AddCommand(newWhoamiCmd(a))
-	root.AddCommand(newBillingCmd(a))
-	root.AddCommand(newNotificationsCmd(a))
-	root.AddCommand(newVersionCmd(a))
-	root.AddCommand(newUpgradeCmd(a))
+	root.AddGroup(
+		&cobra.Group{ID: "project-ops", Title: "Project operations:"},
+		&cobra.Group{ID: "resources", Title: "Resources:"},
+		&cobra.Group{ID: "reference", Title: "Reference:"},
+		&cobra.Group{ID: "account", Title: "Account:"},
+		&cobra.Group{ID: "maintenance", Title: "Maintenance:"},
+	)
+
+	add := func(groupID string, c *cobra.Command) {
+		c.GroupID = groupID
+		root.AddCommand(c)
+	}
+
+	add("project-ops", newLogsCmd(a))
+	add("project-ops", newSQLCmd(a))
+	add("project-ops", newFilesCmd(a))
+	add("project-ops", newBackupsCmd(a))
+	add("project-ops", newVariablesCmd(a))
+	add("project-ops", newDomainsCmd(a))
+	add("project-ops", newRulesCmd(a))
+	add("project-ops", newUsageCmd(a))
+
+	add("resources", newProjectsCmd(a))
+	add("resources", newWorkspacesCmd(a))
+
+	add("reference", newRegionsCmd(a))
+	add("reference", newRuntimesCmd(a))
+
+	add("account", newWhoamiCmd(a))
+	add("account", newBillingCmd(a))
+	add("account", newNotificationsCmd(a))
+	add("account", newConfigCmd(a))
+
+	add("maintenance", newStatusCmd(a))
+	add("maintenance", newUpgradeCmd(a))
+	add("maintenance", newVersionCmd(a))
 
 	return root
 }

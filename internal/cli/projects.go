@@ -16,7 +16,7 @@ import (
 func newProjectsCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "projects",
-		Aliases: []string{"project", "p"},
+		Aliases: []string{"project"},
 		Short:   "Manage projects",
 	}
 
@@ -25,14 +25,6 @@ func newProjectsCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(newProjectsCreateCmd(a))
 	cmd.AddCommand(newProjectsUpdateCmd(a))
 	cmd.AddCommand(newProjectsDeleteCmd(a))
-	cmd.AddCommand(newVariablesCmd(a))
-	cmd.AddCommand(newDomainsCmd(a))
-	cmd.AddCommand(newProjectRulesCmd(a))
-	cmd.AddCommand(newFilesCmd(a))
-	cmd.AddCommand(newBackupsCmd(a))
-	cmd.AddCommand(newSQLCmd(a))
-	cmd.AddCommand(newUsageCmd(a))
-	cmd.AddCommand(newLogsCmd(a))
 
 	return cmd
 }
@@ -174,11 +166,15 @@ func newProjectsDeleteCmd(a *app.App) *cobra.Command {
 
 func newUsageCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "usage <project>",
+		Use:   "usage",
 		Short: "Get project usage statistics",
 		Long:  "Fetch project usage bucketed by --granularity (hour|day|week|month). --since/--until accept RFC3339 timestamps; --limit caps page size.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			q := api.UsageQuery{}
 			if v, _ := cmd.Flags().GetString("limit"); v != "" {
 				if n, err := parseUintFlag(v); err == nil {
@@ -202,7 +198,7 @@ func newUsageCmd(a *app.App) *cobra.Command {
 			if v, _ := cmd.Flags().GetString("granularity"); v != "" {
 				q.Granularity = api.UsageGranularity(v)
 			}
-			result, err := a.API.GetProjectUsage(cmd.Context(), args[0], q)
+			result, err := a.API.GetProjectUsage(cmd.Context(), projectID, q)
 			if err != nil {
 				return err
 			}
@@ -219,10 +215,14 @@ func newUsageCmd(a *app.App) *cobra.Command {
 
 func newLogsCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "logs <project>",
+		Use:   "logs",
 		Short: "Get project logs",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			q := api.LogsQuery{}
 			if v, _ := cmd.Flags().GetString("limit"); v != "" {
 				if n, err := parseUintFlag(v); err == nil {
@@ -243,16 +243,16 @@ func newLogsCmd(a *app.App) *cobra.Command {
 				}
 				q.Until = t
 			}
-			if v, _ := cmd.Flags().GetString("q"); v != "" {
+			if v, _ := cmd.Flags().GetString("query"); v != "" {
 				q.Query = v
 			}
-			return runLogsQuery(cmd, a, args[0], q)
+			return runLogsQuery(cmd, a, projectID, q)
 		},
 	}
 	cmd.Flags().String("limit", "100", "Maximum number of log entries")
 	cmd.Flags().String("since", "", "Start of the window, RFC3339")
 	cmd.Flags().String("until", "", "End of the window, RFC3339")
-	cmd.Flags().String("q", "", "Search query")
+	cmd.Flags().String("query", "", "Search query")
 	cmd.AddCommand(newLogsTailCmd(a))
 	cmd.AddCommand(newLogsSearchCmd(a))
 	return cmd
@@ -260,10 +260,14 @@ func newLogsCmd(a *app.App) *cobra.Command {
 
 func newLogsTailCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "tail <project>",
+		Use:   "tail",
 		Short: "Stream project logs in real-time",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			interval, _ := cmd.Flags().GetString("interval")
 			pollInterval, err := time.ParseDuration(interval)
 			if err != nil {
@@ -281,7 +285,7 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 				cursor := ""
 				seenCursors := map[string]struct{}{}
 				for {
-					page, err := a.API.GetProjectLogsPage(cmd.Context(), args[0], api.LogsQuery{
+					page, err := a.API.GetProjectLogsPage(cmd.Context(), projectID, api.LogsQuery{
 						Since:    since,
 						Cursor:   cursor,
 						PageSize: 1000,
@@ -352,11 +356,15 @@ func parseTimeFlag(value string, now time.Time) (time.Time, error) {
 
 func newLogsSearchCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "search <project> <query>",
+		Use:   "search <query>",
 		Short: "Search project logs",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			q := api.LogsQuery{Query: args[1], Limit: 100}
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			q := api.LogsQuery{Query: args[0], Limit: 100}
 
 			if v, _ := cmd.Flags().GetString("limit"); v != "" {
 				if n, err := parseUintFlag(v); err == nil {
@@ -379,7 +387,7 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 				}
 				q.Until = t
 			}
-			return runLogsQuery(cmd, a, args[0], q)
+			return runLogsQuery(cmd, a, projectID, q)
 		},
 	}
 	cmd.Flags().String("limit", "100", "Maximum number of results")

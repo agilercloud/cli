@@ -42,7 +42,7 @@ func TestFilesMoveSendsXMoveSourceHeader(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesMoveCmd(a)
-	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt", "--overwrite"})
+	cmd.SetArgs([]string{"docs/a.txt", "docs/b.txt", "--overwrite"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("move command failed: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestFilesCopySendsXCopySourceHeader(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesCopyCmd(a)
-	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt", "--overwrite"})
+	cmd.SetArgs([]string{"docs/a.txt", "docs/b.txt", "--overwrite"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("copy command failed: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestFilesMoveDefaultSetsIfNoneMatch(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesMoveCmd(a)
-	cmd.SetArgs([]string{"proj-1", "docs/a.txt", "docs/b.txt"})
+	cmd.SetArgs([]string{"docs/a.txt", "docs/b.txt"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("move command failed: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestFilesUploadDefaultSetsIfNoneMatch(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesUploadCmd(a)
-	cmd.SetArgs([]string{"proj-1", "remote.txt", src, "--force"})
+	cmd.SetArgs([]string{"remote.txt", src, "--force"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("upload command failed: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestFilesUploadOverwriteClearsIfNoneMatch(t *testing.T) {
 	a.API = api.NewClient(srv.URL, "test-key")
 
 	cmd := newFilesUploadCmd(a)
-	cmd.SetArgs([]string{"proj-1", "remote.txt", src, "--overwrite", "--force"})
+	cmd.SetArgs([]string{"remote.txt", src, "--overwrite", "--force"})
 	if err := cmd.ExecuteContext(context.Background()); err != nil {
 		t.Fatalf("upload command failed: %v", err)
 	}

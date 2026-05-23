@@ -14,11 +14,15 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 	}
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "list <project>",
+		Use:   "list",
 		Short: "List project domains",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.ListDomains(cmd.Context(), args[0])
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			result, err := a.API.ListDomains(cmd.Context(), projectID)
 			if err != nil {
 				return err
 			}
@@ -28,19 +32,23 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 	})
 
 	addCmd := &cobra.Command{
-		Use:   "add <project> <domain>",
+		Use:   "add <domain>",
 		Short: "Add a domain to a project",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			in := api.CreateDomainInput{Name: args[1]}
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			in := api.CreateDomainInput{Name: args[0]}
 			if primary, _ := cmd.Flags().GetBool("primary"); primary {
 				p := true
 				in.Primary = &p
 			}
-			if _, err := a.API.CreateDomain(cmd.Context(), args[0], in); err != nil {
+			if _, err := a.API.CreateDomain(cmd.Context(), projectID, in); err != nil {
 				return err
 			}
-			a.Output.Text("Domain %s added.", args[1])
+			a.Output.Text("Domain %s added.", args[0])
 			return nil
 		},
 	}
@@ -48,12 +56,16 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(addCmd)
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "primary <project> <domain-id>",
+		Use:   "primary <domain-id>",
 		Short: "Promote a domain to primary",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			p := true
-			d, err := a.API.UpdateDomain(cmd.Context(), args[0], args[1], api.UpdateDomainInput{Primary: &p})
+			d, err := a.API.UpdateDomain(cmd.Context(), projectID, args[0], api.UpdateDomainInput{Primary: &p})
 			if err != nil {
 				return err
 			}
@@ -67,11 +79,15 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "delete <project> <domain-id>",
+		Use:   "delete <domain-id>",
 		Short: "Delete a domain from a project",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DeleteDomain(cmd.Context(), args[0], args[1]); err != nil {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			if err := a.API.DeleteDomain(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Domain deleted.")

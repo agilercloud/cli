@@ -35,6 +35,7 @@ type App struct {
 	FlagAPIKey      string
 	FlagAPIBase     string
 	FlagWorkspaceID string
+	FlagProjectID   string
 
 	// OutputFormat is the raw --format flag value (parsed in initOutput);
 	// OutputQuiet is the raw --quiet flag value.

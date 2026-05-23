@@ -17,11 +17,15 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 	}
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "list <project>",
+		Use:   "list",
 		Short: "List environment variables",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.ListVariables(cmd.Context(), args[0])
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			result, err := a.API.ListVariables(cmd.Context(), projectID)
 			if err != nil {
 				return err
 			}
@@ -31,10 +35,14 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 	})
 
 	setCmd := &cobra.Command{
-		Use:   "set <project> <name> <value>",
+		Use:   "set <name> <value>",
 		Short: "Create or update an environment variable",
-		Args:  cobra.ExactArgs(3),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
 			sensitive, _ := cmd.Flags().GetBool("sensitive")
 			// Only forward the sensitive field when the flag was explicitly
 			// provided; otherwise leave it nil so the server preserves the
@@ -44,10 +52,10 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 				sensitivePtr = &sensitive
 			}
 
-			name := strings.ToUpper(strings.TrimSpace(args[1]))
-			value := args[2]
+			name := strings.ToUpper(strings.TrimSpace(args[0]))
+			value := args[1]
 
-			existing, err := a.API.ListVariables(cmd.Context(), args[0])
+			existing, err := a.API.ListVariables(cmd.Context(), projectID)
 			if err != nil {
 				return err
 			}
@@ -61,7 +69,7 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 
 			var result *api.Variable
 			if variableId == "" {
-				v, err := a.API.CreateVariable(cmd.Context(), args[0], api.CreateVariableInput{
+				v, err := a.API.CreateVariable(cmd.Context(), projectID, api.CreateVariableInput{
 					Name:      name,
 					Value:     value,
 					Sensitive: sensitivePtr,
@@ -71,7 +79,7 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 				}
 				result = v
 			} else {
-				v, err := a.API.UpdateVariable(cmd.Context(), args[0], variableId, api.UpdateVariableInput{
+				v, err := a.API.UpdateVariable(cmd.Context(), projectID, variableId, api.UpdateVariableInput{
 					Name:      &name,
 					Value:     &value,
 					Sensitive: sensitivePtr,
@@ -93,11 +101,15 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(setCmd)
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "delete <project> <variable-id>",
+		Use:   "delete <variable-id>",
 		Short: "Delete an environment variable",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.API.DeleteVariable(cmd.Context(), args[0], args[1]); err != nil {
+			projectID, err := requireProjectID(a)
+			if err != nil {
+				return err
+			}
+			if err := a.API.DeleteVariable(cmd.Context(), projectID, args[0]); err != nil {
 				return err
 			}
 			a.Output.Text("Variable deleted.")

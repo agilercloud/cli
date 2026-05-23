@@ -8,12 +8,14 @@ import (
 
 	"github.com/agilercloud/cli/internal/app"
 	"github.com/agilercloud/cli/internal/clock"
+	"github.com/agilercloud/cli/internal/config"
 	"github.com/agilercloud/cli/internal/fsx"
 	"github.com/agilercloud/cli/internal/output"
 )
 
 // newTestApp returns an App with in-memory buffers. Callers can inspect
-// Out/Err after Run to verify behavior.
+// Out/Err after Run to verify behavior. A default ProjectID lets unit tests
+// invoke project-scoped subcommands directly without setting --project.
 func newTestApp(t *testing.T) (*app.App, *bytes.Buffer, *bytes.Buffer) {
 	t.Helper()
 	out := &bytes.Buffer{}
@@ -26,6 +28,7 @@ func newTestApp(t *testing.T) (*app.App, *bytes.Buffer, *bytes.Buffer) {
 		Output:  output.New(output.FormatText, false, out, errBuf),
 		FS:      fsx.NewMemFS(),
 		Clock:   clock.Real{},
+		Config:  &config.Config{ProjectID: "proj-1"},
 	}
 	return a, out, errBuf
 }
@@ -41,27 +44,46 @@ func TestHelpCommands(t *testing.T) {
 		"projects create --help",
 		"projects update --help",
 		"projects delete --help",
-		"projects variables --help",
-		"projects domains --help",
-		"projects rules --help",
-		"projects files --help",
-		"projects files list --help",
-		"projects files get --help",
-		"projects files upload --help",
-		"projects files delete --help",
-		"projects files move --help",
-		"projects files copy --help",
-		"projects backups --help",
-		"projects backups restore --help",
-		"projects sql --help",
-		"projects sql execute --help",
-		"projects sql history --help",
-		"projects sql get --help",
-		"projects sql delete --help",
-		"projects usage --help",
-		"projects logs --help",
-		"projects logs tail --help",
-		"projects logs search --help",
+		"variables --help",
+		"variables list --help",
+		"variables set --help",
+		"variables delete --help",
+		"domains --help",
+		"domains list --help",
+		"domains add --help",
+		"domains primary --help",
+		"domains delete --help",
+		"files --help",
+		"files list --help",
+		"files get --help",
+		"files upload --help",
+		"files delete --help",
+		"files move --help",
+		"files copy --help",
+		"backups --help",
+		"backups list --help",
+		"backups create --help",
+		"backups delete --help",
+		"backups restore --help",
+		"backups download --help",
+		"backups policy --help",
+		"backups policy set --help",
+		"sql --help",
+		"sql execute --help",
+		"sql history --help",
+		"sql get --help",
+		"sql delete --help",
+		"usage --help",
+		"logs --help",
+		"logs tail --help",
+		"logs search --help",
+		"rules --help",
+		"rules list --help",
+		"rules create --help",
+		"rules update --help",
+		"rules delete --help",
+		"rules templates --help",
+		"rules templates options --help",
 		"workspaces --help",
 		"workspaces list --help",
 		"workspaces get --help",
@@ -73,8 +95,14 @@ func TestHelpCommands(t *testing.T) {
 		"runtimes --help",
 		"runtimes list --help",
 		"runtimes get --help",
-		"rules --help",
-		"rules options --help",
+		"whoami --help",
+		"billing --help",
+		"billing status --help",
+		"billing transactions --help",
+		"billing statement --help",
+		"notifications --help",
+		"notifications list --help",
+		"notifications delete --help",
 		"status --help",
 		"version --help",
 		"upgrade --help",
