@@ -66,6 +66,8 @@ func TestHelpCommands(t *testing.T) {
 		"backups delete --help",
 		"backups restore --help",
 		"backups download --help",
+		"backups download database --help",
+		"backups download storage --help",
 		"backups policy --help",
 		"backups policy set --help",
 		"sql --help",

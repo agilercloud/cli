@@ -115,50 +115,32 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(restoreCmd)
 
 	dl := &cobra.Command{
-		Use:   "download <backup-id>",
-		Short: "Download a backup",
+		Use:   "download",
+		Short: "Download a backup artifact (database dump or object storage)",
+		Long:  "Download a backup as a database dump or as the project's object-storage snapshot. The artifact kind is chosen by subcommand.",
+	}
+
+	dlDB := &cobra.Command{
+		Use:   "database <backup-id>",
+		Short: "Download the database dump from a backup",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := requireProjectID(a)
-			if err != nil {
-				return err
-			}
-			dlType, _ := cmd.Flags().GetString("type")
-			var kind api.BackupArtifact
-			switch dlType {
-			case "database":
-				kind = api.BackupDatabase
-			case "storage":
-				kind = api.BackupStorage
-			default:
-				return fmt.Errorf("--type must be 'storage' or 'database'")
-			}
-
-			outputPath, _ := cmd.Flags().GetString("output")
-			resp, err := a.API.DownloadBackup(cmd.Context(), projectID, args[0], kind)
-			if err != nil {
-				return err
-			}
-			defer func() { _ = resp.Body.Close() }()
-
-			if outputPath == "" || outputPath == "-" {
-				if _, err := io.Copy(a.Out, resp.Body); err != nil {
-					return fmt.Errorf("write file: %w", err)
-				}
-				return nil
-			}
-
-			n, err := writeStreamAtomic(outputPath, resp.Body)
-			if err != nil {
-				return err
-			}
-			a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
-			return nil
+			return runBackupDownload(cmd, a, args, api.BackupDatabase)
 		},
 	}
-	dl.Flags().String("type", "", "Download type: 'storage' or 'database' (required)")
-	dl.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
-	_ = dl.MarkFlagRequired("type")
+	dlDB.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
+
+	dlStorage := &cobra.Command{
+		Use:   "storage <backup-id>",
+		Short: "Download the object-storage snapshot from a backup",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runBackupDownload(cmd, a, args, api.BackupStorage)
+		},
+	}
+	dlStorage.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
+
+	dl.AddCommand(dlDB, dlStorage)
 	cmd.AddCommand(dl)
 
 	policy := &cobra.Command{
@@ -253,6 +235,33 @@ func renderBackupPolicy(w *output.Writer, p api.BackupPolicy) {
 	}
 	w.Text("Frequency: every %d days", p.FrequencyDays)
 	w.Text("Retention: %d days", p.RetentionDays)
+}
+
+func runBackupDownload(cmd *cobra.Command, a *app.App, args []string, kind api.BackupArtifact) error {
+	projectID, err := requireProjectID(a)
+	if err != nil {
+		return err
+	}
+	outputPath, _ := cmd.Flags().GetString("output")
+	resp, err := a.API.DownloadBackup(cmd.Context(), projectID, args[0], kind)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if outputPath == "" || outputPath == "-" {
+		if _, err := io.Copy(a.Out, resp.Body); err != nil {
+			return fmt.Errorf("write file: %w", err)
+		}
+		return nil
+	}
+
+	n, err := writeStreamAtomic(outputPath, resp.Body)
+	if err != nil {
+		return err
+	}
+	a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
+	return nil
 }
 
 // writeStreamAtomic copies src into a sibling temp file of outputPath
