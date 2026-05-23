@@ -127,6 +127,29 @@ agiler version             Print CLI version
 
 Run `agiler <command> --help` for details on any subcommand.
 
+## Shell completion
+
+Generate a completion script for your shell:
+
+```sh
+# bash (Linux):
+agiler completion bash | sudo tee /etc/bash_completion.d/agiler
+
+# bash (macOS, with Homebrew bash-completion):
+agiler completion bash > "$(brew --prefix)/etc/bash_completion.d/agiler"
+
+# zsh:
+agiler completion zsh > "${fpath[1]}/_agiler"
+
+# fish:
+agiler completion fish > ~/.config/fish/completions/agiler.fish
+
+# powershell:
+agiler completion powershell | Out-String | Invoke-Expression
+```
+
+After installing the script, project, workspace, region, and runtime IDs auto-complete from the live API. Completion is also wired for `--project`, `--workspace`, `--region`, and `--runtime` flag values.
+
 ## License
 
 [MIT](LICENSE)

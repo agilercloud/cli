@@ -50,9 +50,10 @@ func newProjectsListCmd(a *app.App) *cobra.Command {
 
 func newProjectsGetCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <project>",
-		Short: "Get project details",
-		Args:  cobra.ExactArgs(1),
+		Use:               "get <project>",
+		Short:             "Get project details",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeProjectIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := a.API.GetProject(cmd.Context(), args[0])
 			if err != nil {
@@ -93,14 +94,17 @@ func newProjectsCreateCmd(a *app.App) *cobra.Command {
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("region")
 	_ = cmd.MarkFlagRequired("runtime")
+	_ = cmd.RegisterFlagCompletionFunc("region", completeRegionIDs(a))
+	_ = cmd.RegisterFlagCompletionFunc("runtime", completeRuntimeIDs(a))
 	return cmd
 }
 
 func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <project>",
-		Short: "Update a project",
-		Args:  cobra.ExactArgs(1),
+		Use:               "update <project>",
+		Short:             "Update a project",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeProjectIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var in api.UpdateProjectInput
 			touched := false
@@ -146,14 +150,16 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 	cmd.Flags().String("name", "", "Project name")
 	cmd.Flags().Bool("active", false, "Active state")
 	cmd.Flags().String("runtime", "", "Runtime ID")
+	_ = cmd.RegisterFlagCompletionFunc("runtime", completeRuntimeIDs(a))
 	return cmd
 }
 
 func newProjectsDeleteCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <project>",
-		Short: "Delete a project",
-		Args:  cobra.ExactArgs(1),
+		Use:               "delete <project>",
+		Short:             "Delete a project",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeProjectIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := confirmOrSkip(a, cmd, fmt.Sprintf("Delete project %s? (y/N) ", args[0])); err != nil {
 				return err

@@ -41,9 +41,10 @@ func newWorkspacesListCmd(a *app.App) *cobra.Command {
 
 func newWorkspacesGetCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <workspace>",
-		Short: "Get workspace details",
-		Args:  cobra.ExactArgs(1),
+		Use:               "get <workspace>",
+		Short:             "Get workspace details",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeWorkspaceIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workspaceID, err := normalizeWorkspaceID(args[0])
 			if err != nil {
@@ -86,9 +87,10 @@ func newWorkspacesCreateCmd(a *app.App) *cobra.Command {
 
 func newWorkspacesMembersCmd(a *app.App) *cobra.Command {
 	return &cobra.Command{
-		Use:   "members <workspace>",
-		Short: "List workspace members and pending invites",
-		Args:  cobra.ExactArgs(1),
+		Use:               "members <workspace>",
+		Short:             "List workspace members and pending invites",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeWorkspaceIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			workspaceID, err := normalizeWorkspaceID(args[0])
 			if err != nil {

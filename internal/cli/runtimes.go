@@ -29,9 +29,10 @@ func newRuntimesCmd(a *app.App) *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "get <runtime-id>",
-		Short: "Get runtime details",
-		Args:  cobra.ExactArgs(1),
+		Use:               "get <runtime-id>",
+		Short:             "Get runtime details",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeRuntimeIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := a.API.GetRuntime(cmd.Context(), args[0])
 			if err != nil {

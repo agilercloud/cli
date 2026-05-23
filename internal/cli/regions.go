@@ -29,9 +29,10 @@ func newRegionsCmd(a *app.App) *cobra.Command {
 	})
 
 	cmd.AddCommand(&cobra.Command{
-		Use:   "get <region-id>",
-		Short: "Get region details",
-		Args:  cobra.ExactArgs(1),
+		Use:               "get <region-id>",
+		Short:             "Get region details",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeRegionIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := a.API.GetRegion(cmd.Context(), args[0])
 			if err != nil {

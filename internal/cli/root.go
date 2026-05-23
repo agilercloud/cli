@@ -48,28 +48,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 				return nil
 			}
 
-			if a.ConfigLoader == nil {
-				a.ConfigLoader = config.NewOSLoader(config.Options{FlagConfig: a.FlagConfig})
-			}
-			cfg, err := a.ConfigLoader.Load()
-			if err != nil {
-				return fmt.Errorf("load config: %w", err)
-			}
-			if a.FlagAPIKey != "" {
-				cfg.APIKey = a.FlagAPIKey
-			}
-			if a.FlagAPIBase != "" {
-				cfg.APIBase = a.FlagAPIBase
-			}
-			if a.FlagWorkspaceID != "" {
-				cfg.WorkspaceID = a.FlagWorkspaceID
-			}
-			if a.FlagProjectID != "" {
-				cfg.ProjectID = a.FlagProjectID
-			}
-			a.Config = cfg
-			a.API = api.NewClient(cfg.APIBase, cfg.APIKey)
-			return nil
+			return ensureAPI(a)
 		},
 		SilenceUsage: true,
 	}
@@ -81,6 +60,9 @@ func NewRootCmd(a *app.App) *cobra.Command {
 	root.PersistentFlags().StringVarP(&a.FlagProjectID, "project", "p", "", "Project ID for project-scoped commands (overrides config and AGILER_PROJECT_ID)")
 	root.PersistentFlags().StringVar(&a.OutputFormat, "format", "", "Output format: text|json|yaml|csv|tsv (default text)")
 	root.PersistentFlags().BoolVarP(&a.OutputQuiet, "quiet", "q", false, "Minimal output (IDs only)")
+
+	_ = root.RegisterFlagCompletionFunc("project", completeProjectIDs(a))
+	_ = root.RegisterFlagCompletionFunc("workspace", completeWorkspaceIDs(a))
 
 	root.AddGroup(
 		&cobra.Group{ID: "project-ops", Title: "Project operations:"},
@@ -134,6 +116,38 @@ func Run(a *app.App, ctx context.Context, args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// ensureAPI loads config and constructs a.API if it hasn't been done yet.
+// PersistentPreRunE calls it for the normal command path; completion
+// helpers call it on demand because Cobra's __complete entry point does
+// not invoke PersistentPreRunE.
+func ensureAPI(a *app.App) error {
+	if a.API != nil {
+		return nil
+	}
+	if a.ConfigLoader == nil {
+		a.ConfigLoader = config.NewOSLoader(config.Options{FlagConfig: a.FlagConfig})
+	}
+	cfg, err := a.ConfigLoader.Load()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+	if a.FlagAPIKey != "" {
+		cfg.APIKey = a.FlagAPIKey
+	}
+	if a.FlagAPIBase != "" {
+		cfg.APIBase = a.FlagAPIBase
+	}
+	if a.FlagWorkspaceID != "" {
+		cfg.WorkspaceID = a.FlagWorkspaceID
+	}
+	if a.FlagProjectID != "" {
+		cfg.ProjectID = a.FlagProjectID
+	}
+	a.Config = cfg
+	a.API = api.NewClient(cfg.APIBase, cfg.APIKey)
+	return nil
 }
 
 func initOutput(a *app.App) error {
