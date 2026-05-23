@@ -76,6 +76,8 @@ project_id   = "..."                     # optional; default project for project
 
 Environment variables `AGILER_API_KEY`, `AGILER_API_BASE`, `AGILER_WORKSPACE_ID`, and `AGILER_PROJECT_ID` override config values. Command-line flags `--api-key`, `--api-base`, `--workspace`, and `--project`/`-p` override both.
 
+Set `AGILER_NO_UPDATE_CHECK=1` to suppress the once-per-day background "newer version available" notification.
+
 Project-scoped commands (`logs`, `sql`, `files`, `backups`, `variables`, `domains`, `rules`, `usage`) target the project resolved from `--project`, `AGILER_PROJECT_ID`, or `project_id` in config. Setting it once in config means you don't repeat the project ID on every command.
 
 ## Commands

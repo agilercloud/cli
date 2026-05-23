@@ -63,10 +63,17 @@ func newRulesCmd(a *app.App) *cobra.Command {
 			if err := json.Unmarshal(data, &in); err != nil {
 				return fmt.Errorf("invalid rule JSON: %w", err)
 			}
-			if _, err := a.API.CreateRule(cmd.Context(), projectID, in); err != nil {
+			result, err := a.API.CreateRule(cmd.Context(), projectID, in)
+			if err != nil {
 				return err
 			}
-			a.Output.Text("Rule created.")
+			if a.Output.IsStructured() {
+				a.Output.Structured(result)
+			} else if a.Output.IsQuiet() {
+				a.Output.Text("%s", result.Id)
+			} else {
+				a.Output.Text("Rule %s created: %s", result.Name, result.Id)
+			}
 			return nil
 		},
 	})

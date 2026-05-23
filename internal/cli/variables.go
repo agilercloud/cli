@@ -91,8 +91,10 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 			}
 			if a.Output.IsStructured() {
 				a.Output.Structured(result)
+			} else if a.Output.IsQuiet() {
+				a.Output.Text("%s", result.Id)
 			} else {
-				a.Output.Text("Variable %s set (sensitive=%t).", result.Name, result.Sensitive)
+				a.Output.Text("Variable %s set (sensitive=%s): %s", result.Name, output.YesNo(result.Sensitive), result.Id)
 			}
 			return nil
 		},
@@ -140,7 +142,7 @@ func renderVariablesList(w *output.Writer, vars []api.Variable) {
 		if v.Value != nil {
 			value = *v.Value
 		}
-		rows[i] = []string{v.Id.String(), v.Name, fmt.Sprintf("%t", v.Sensitive), value}
+		rows[i] = []string{v.Id.String(), v.Name, output.YesNo(v.Sensitive), value}
 	}
 	w.Table([]string{"ID", "NAME", "SENSITIVE", "VALUE"}, rows)
 }

@@ -47,10 +47,17 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 				p := true
 				in.Primary = &p
 			}
-			if _, err := a.API.CreateDomain(cmd.Context(), projectID, in); err != nil {
+			result, err := a.API.CreateDomain(cmd.Context(), projectID, in)
+			if err != nil {
 				return err
 			}
-			a.Output.Text("Domain %s added.", args[0])
+			if a.Output.IsStructured() {
+				a.Output.Structured(result)
+			} else if a.Output.IsQuiet() {
+				a.Output.Text("%s", result.Id)
+			} else {
+				a.Output.Text("Domain %s added: %s", result.Name, result.Id)
+			}
 			return nil
 		},
 	}

@@ -81,11 +81,11 @@ func newProjectsCreateCmd(a *app.App) *cobra.Command {
 			} else if workspaceID != uuid.Nil {
 				in.WorkspaceId = &workspaceID
 			}
-			if _, err := a.API.CreateProject(cmd.Context(), in); err != nil {
+			result, err := a.API.CreateProject(cmd.Context(), in)
+			if err != nil {
 				return err
 			}
-			a.Output.Text("Project created.")
-			return nil
+			return renderProjectDetail(a.Output, *result)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Project name (required)")
@@ -503,7 +503,7 @@ func renderProjectDetail(w *output.Writer, p api.ProjectDetail) error {
 	w.Text("ID:        %s", p.Id)
 	w.Text("Name:      %s", p.Name)
 	w.Text("Status:    %s", p.Status)
-	w.Text("Active:    %t", p.Active)
+	w.Text("Active:    %s", output.YesNo(p.Active))
 	w.Text("Region:    %s", p.Region)
 	w.Text("Runtime:   %s", p.Runtime)
 	w.Text("Workspace: %s", p.WorkspaceId)

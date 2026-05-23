@@ -1,7 +1,7 @@
 ID:        00000000-0000-0000-0000-000000000001
 Name:      alpha
 Status:    running
-Active:    true
+Active:    yes
 Region:    eu
 Runtime:   node22
 Workspace: 00000000-0000-0000-0000-000000000002

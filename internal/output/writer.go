@@ -154,6 +154,15 @@ func (w *Writer) Stderr(format string, args ...any) {
 	_, _ = fmt.Fprintf(w.Err, format+"\n", args...)
 }
 
+// YesNo renders a boolean as "yes" or "no" for human-readable text output.
+// Structured (json/yaml) renderers should keep the typed value instead.
+func YesNo(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
+}
+
 func (w *Writer) writeDelimited(headers []string, rows [][]string, comma rune) {
 	cw := csv.NewWriter(w.Out)
 	cw.Comma = comma

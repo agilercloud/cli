@@ -104,7 +104,7 @@ func renderBillingStatus(w *output.Writer, b api.Billing) error {
 		}
 		w.Text("Budget alerts:  %s", strings.Join(alerts, ", "))
 	}
-	w.Text("Budget stop:    %s", boolYesNo(b.BudgetStop))
+	w.Text("Budget stop:    %s", output.YesNo(b.BudgetStop))
 	if b.ForceUpdate != nil {
 		w.Text("Update required: yes — please review billing settings in the web app (since %s).",
 			b.ForceUpdate.Format(time.RFC3339))
@@ -138,11 +138,4 @@ func renderBillingTransactions(w *output.Writer, months []api.BillingMonth) {
 		return
 	}
 	w.Table([]string{"DATE", "DESCRIPTION", "AMOUNT"}, rows)
-}
-
-func boolYesNo(b bool) string {
-	if b {
-		return "yes"
-	}
-	return "no"
 }

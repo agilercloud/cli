@@ -46,10 +46,17 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if _, err := a.API.CreateBackup(cmd.Context(), projectID); err != nil {
+			result, err := a.API.CreateBackup(cmd.Context(), projectID)
+			if err != nil {
 				return err
 			}
-			a.Output.Text("Backup created.")
+			if a.Output.IsStructured() {
+				a.Output.Structured(result)
+			} else if a.Output.IsQuiet() {
+				a.Output.Text("%s", result.Id)
+			} else {
+				a.Output.Text("Backup created: %s", result.Id)
+			}
 			return nil
 		},
 	})
@@ -231,7 +238,7 @@ func renderBackupsList(w *output.Writer, backups []api.Backup) {
 			b.Id.String(),
 			b.Status,
 			b.CreatedAt.Format(time.RFC3339),
-			fmt.Sprintf("%t", b.Automatic),
+			output.YesNo(b.Automatic),
 			size,
 		}
 	}

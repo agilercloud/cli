@@ -121,9 +121,9 @@ func renderWorkspacesList(w *output.Writer, ws []api.Workspace) {
 			s.Id.String(),
 			s.Name,
 			s.Role,
-			yesNo(s.IsBillingUser),
-			yesNo(s.RequireMfa),
-			yesNo(s.MfaRequiredForCaller),
+			output.YesNo(s.IsBillingUser),
+			output.YesNo(s.RequireMfa),
+			output.YesNo(s.MfaRequiredForCaller),
 		}
 	}
 	w.Table([]string{"ID", "NAME", "ROLE", "BILLING", "REQUIRE MFA", "MFA REQUIRED"}, rows)
@@ -144,10 +144,10 @@ func renderWorkspaceDetail(w *output.Writer, s api.Workspace) error {
 	w.Text("ID:              %s", s.Id)
 	w.Text("Name:            %s", s.Name)
 	w.Text("Role:            %s", s.Role)
-	w.Text("Billing User:    %s", yesNo(s.IsBillingUser))
+	w.Text("Billing User:    %s", output.YesNo(s.IsBillingUser))
 	w.Text("Billing User ID: %s", s.BillingUserId)
-	w.Text("Require MFA:     %s", yesNo(s.RequireMfa))
-	w.Text("MFA Required:    %s", yesNo(s.MfaRequiredForCaller))
+	w.Text("Require MFA:     %s", output.YesNo(s.RequireMfa))
+	w.Text("MFA Required:    %s", output.YesNo(s.MfaRequiredForCaller))
 	w.Text("Created:         %s", s.CreatedAt.Format(time.RFC3339))
 	w.Text("Updated:         %s", s.UpdatedAt.Format(time.RFC3339))
 	return nil
@@ -170,7 +170,7 @@ func renderWorkspaceMembersList(w *output.Writer, members []api.WorkspaceMember)
 			optionalString(m.Name),
 			m.Role,
 			m.Status,
-			yesNo(m.IsBillingUser),
+			output.YesNo(m.IsBillingUser),
 			optionalBool(m.MfaEnabled),
 		}
 	}
@@ -198,12 +198,5 @@ func optionalBool(value *bool) string {
 	if value == nil {
 		return ""
 	}
-	return yesNo(*value)
-}
-
-func yesNo(value bool) string {
-	if value {
-		return "yes"
-	}
-	return "no"
+	return output.YesNo(*value)
 }
