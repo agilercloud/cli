@@ -91,10 +91,9 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 func newSQLHistoryCmd(a *app.App) *cobra.Command {
 	var limit int
 	cmd := &cobra.Command{
-		Use:     "history",
-		Aliases: []string{"list", "ls"},
-		Short:   "List recent SQL executions for a project",
-		Long:    "List recent SQL executions for the configured project. Each entry shows the statement ID, status, the truncated SQL, when it was submitted, and how long it ran.",
+		Use:   "history",
+		Short: "List recent SQL executions for a project",
+		Long:  "List recent SQL executions for the configured project. Each entry shows the statement ID, status, the truncated SQL, when it was submitted, and how long it ran.",
 		Example: `  agiler sql history
   agiler sql history --limit 5
   agiler sql history --format json`,

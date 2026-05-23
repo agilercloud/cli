@@ -69,7 +69,7 @@ func remoteParentDir(remotePath string) string {
 
 // --- Upload ---
 
-func uploadSingleFile(ctx context.Context, client *api.Client, projectID, remotePath, localPath string, overwrite bool) error {
+func uploadSingleFile(ctx context.Context, client *api.Client, projectID, remotePath, localPath string, overwrite bool, prog *progressOptions) (err error) {
 	f, err := os.Open(localPath)
 	if err != nil {
 		return fmt.Errorf("open file: %w", err)
@@ -77,13 +77,29 @@ func uploadSingleFile(ctx context.Context, client *api.Client, projectID, remote
 	defer func() { _ = f.Close() }()
 
 	headers := map[string]string{}
+	var size int64
 	if fi, err := f.Stat(); err == nil {
 		headers["Last-Modified"] = fi.ModTime().UTC().Format(http.TimeFormat)
+		size = fi.Size()
 	}
 	if !overwrite {
 		headers["If-None-Match"] = "*"
 	}
-	return client.PutProjectFile(ctx, projectID, remotePath, "application/octet-stream", f, headers)
+
+	body := io.Reader(f)
+	var pr *output.ProgressReader
+	if prog != nil {
+		pr = output.NewProgressReader(f, prog.w, filepath.Base(localPath), size, prog.color)
+		body = pr
+	}
+	defer func() {
+		if pr != nil {
+			pr.Finish(err == nil)
+		}
+	}()
+
+	err = client.PutProjectFile(ctx, projectID, remotePath, "application/octet-stream", body, headers)
+	return err
 }
 
 func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir string, force, overwrite bool, stats *syncStats) error {
@@ -128,7 +144,7 @@ func uploadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDir 
 			}
 		}
 
-		if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, overwrite); err != nil {
+		if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, overwrite, nil); err != nil {
 			a.Output.Stderr("error %s: %v", remotePath, err)
 			stats.errors++
 			continue
@@ -158,6 +174,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 			localPath := args[1]
 			force, _ := cmd.Flags().GetBool("force")
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
+			showProgress, _ := cmd.Flags().GetBool("progress")
 
 			fi, err := os.Stat(localPath)
 			if err != nil {
@@ -190,15 +207,22 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 				}
 			}
 
-			if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, overwrite); err != nil {
+			var prog *progressOptions
+			if showProgress && a.Output.ErrColor.Enabled() {
+				prog = &progressOptions{w: a.Err, color: a.Output.ErrColor}
+			}
+			if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, overwrite, prog); err != nil {
 				return err
 			}
-			a.Output.Text("File uploaded.")
+			if prog == nil {
+				a.Output.Text("File uploaded.")
+			}
 			return nil
 		},
 	}
 	cmd.Flags().BoolP("force", "f", false, "Force transfer even if file is unchanged")
 	cmd.Flags().Bool("overwrite", false, "Overwrite the remote destination if it already exists (default: fail with 412 if exists)")
+	cmd.Flags().Bool("progress", false, "Show a streaming progress indicator on stderr (single-file uploads only)")
 	return cmd
 }
 
