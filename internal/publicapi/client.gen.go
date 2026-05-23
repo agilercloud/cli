@@ -239,6 +239,7 @@ type ProjectDomainOutput struct {
 
 // ProjectFileEntry defines model for ProjectFileEntry.
 type ProjectFileEntry struct {
+	Etag       *string   `json:"etag,omitempty"`
 	IsDir      bool      `json:"is_dir"`
 	ModifiedAt time.Time `json:"modified_at"`
 	Name       string    `json:"name"`
