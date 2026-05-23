@@ -95,6 +95,7 @@ func TestHelpCommands(t *testing.T) {
 		"runtimes --help",
 		"runtimes list --help",
 		"runtimes get --help",
+		"login --help",
 		"whoami --help",
 		"billing --help",
 		"billing status --help",

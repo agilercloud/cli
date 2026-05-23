@@ -42,7 +42,10 @@ agiler upgrade --force      # override refusals (dev build, non-canonical path, 
 ## Quickstart
 
 ```sh
-agiler config set api-key ak_your_key_here
+agiler login                                  # interactive, masked input
+# or, for CI:
+printf '%s' "$AGILER_API_KEY" | agiler login
+
 agiler config set project-id <project-uuid>
 agiler status
 agiler projects list
@@ -50,6 +53,8 @@ agiler logs
 ```
 
 Generate an API key in the [Agiler dashboard](https://agiler.io) under *Settings → API Keys*.
+
+`agiler login` is the safe way to store an API key: on a TTY it reads with echo disabled so the key never lands in shell history; on a pipe it reads one line from stdin. If a script needs to bypass the login flow entirely, `agiler config set api-key -` also reads the value from stdin.
 
 ## Configuration
 
@@ -105,6 +110,7 @@ agiler runtimes            List available runtimes
 **Account:**
 
 ```
+agiler login               Store an API key (masked input on a TTY, stdin on a pipe)
 agiler whoami              Show the authenticated user and effective scopes
 agiler billing             View billing state, transactions, statements
 agiler notifications       List and dismiss notifications

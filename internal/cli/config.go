@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"strings"
 
 	"github.com/agilercloud/cli/internal/app"
 	"github.com/agilercloud/cli/internal/config"
@@ -26,10 +28,18 @@ func newConfigCmd(a *app.App) *cobra.Command {
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "set <key> <value>",
-		Short: "Set a config value",
+		Short: "Set a config value (use '-' as <value> to read from stdin)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := loader(a).Set(args[0], args[1]); err != nil {
+			value := args[1]
+			if value == "-" {
+				data, err := io.ReadAll(a.In)
+				if err != nil {
+					return fmt.Errorf("read value from stdin: %w", err)
+				}
+				value = strings.TrimRight(string(data), " \t\r\n")
+			}
+			if err := loader(a).Set(args[0], value); err != nil {
 				return err
 			}
 			_, _ = fmt.Fprintf(a.Out, "Set %s\n", args[0])
