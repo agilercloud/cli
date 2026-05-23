@@ -132,9 +132,11 @@ type CreateWorkspaceInput struct {
 
 // ErrorPayload defines model for ErrorPayload.
 type ErrorPayload struct {
-	Code    string  `json:"code"`
-	Field   *string `json:"field,omitempty"`
-	Message string  `json:"message"`
+	Code     string  `json:"code"`
+	Field    *string `json:"field,omitempty"`
+	Id       *string `json:"id,omitempty"`
+	Message  string  `json:"message"`
+	Resource *string `json:"resource,omitempty"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
@@ -229,7 +231,7 @@ type ProjectDetail struct {
 
 // ProjectDomainOutput defines model for ProjectDomainOutput.
 type ProjectDomainOutput struct {
-	CreatedAt *time.Time         `json:"created_at,omitempty"`
+	CreatedAt time.Time          `json:"created_at"`
 	Id        openapi_types.UUID `json:"id"`
 	Name      string             `json:"name"`
 	Primary   bool               `json:"primary"`
@@ -313,22 +315,51 @@ type RegionOutput struct {
 
 // RuleActionOption defines model for RuleActionOption.
 type RuleActionOption struct {
-	Fact     *string   `json:"fact,omitempty"`
-	Operator string    `json:"operator"`
-	Values   *[]string `json:"values,omitempty"`
+	// AllowedValues Domain of allowed values when this action takes one. Omitted for terminal actions that take no value (e.g. "end").
+	AllowedValues *[]string `json:"allowed_values,omitempty"`
+
+	// Description Human-readable explanation of the action's effect.
+	Description *string `json:"description,omitempty"`
+
+	// Fact Dotted fact key the action mutates. Omitted for terminal actions like "end".
+	Fact *string `json:"fact,omitempty"`
+
+	// Operator Action operator code (e.g. "set", "end").
+	Operator string `json:"operator"`
+}
+
+// RuleCatalogNotes defines model for RuleCatalogNotes.
+type RuleCatalogNotes struct {
+	// ConditionsShape How to build the conditions object: a JSON object containing one or more of 'all' (AND), 'any' (OR), or 'not' (negated AND). Each maps to an array of statements.
+	ConditionsShape string `json:"conditions_shape"`
+
+	// StatementShape How to build a single rule statement from a catalog entry: copy fact/operator from the entry, then supply a single string 'value' (NOT 'values') chosen from the entry's 'allowed_values' domain.
+	StatementShape string `json:"statement_shape"`
+
+	// TerminalActionEnd Explanation of the special {"operator":"end"} action.
+	TerminalActionEnd string `json:"terminal_action_end"`
 }
 
 // RuleConditionOption defines model for RuleConditionOption.
 type RuleConditionOption struct {
-	Fact      string   `json:"fact"`
+	// AllowedValues Domain of allowed value strings. A single "*" entry means any string is accepted; a literal list like ["http","https"] means the value must be one of those exact strings. Each rule statement carries a single value (the request shape's "value" field), not this array.
+	AllowedValues []string `json:"allowed_values"`
+
+	// Description Human-readable note about when this fact is observable and how the engine evaluates it.
+	Description *string `json:"description,omitempty"`
+
+	// Fact Dotted fact key, e.g. "request.method". A trailing ".*" ("request.header.*") means any sub-key is accepted.
+	Fact string `json:"fact"`
+
+	// Operators Operator codes allowed for this fact when used inside conditions.all / .any / .not arrays.
 	Operators []string `json:"operators"`
-	Values    []string `json:"values"`
 }
 
 // RuleOptionsOutput defines model for RuleOptionsOutput.
 type RuleOptionsOutput struct {
 	Actions    []RuleActionOption    `json:"actions"`
 	Conditions []RuleConditionOption `json:"conditions"`
+	Notes      RuleCatalogNotes      `json:"notes"`
 	Templates  []RuleTemplateOutput  `json:"templates"`
 }
 

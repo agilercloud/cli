@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
@@ -43,15 +44,16 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 				sensitivePtr = &sensitive
 			}
 
-			// Resolve to an existing variable if one with this name exists,
-			// so `variables set` is an upsert across CLI sessions.
+			name := strings.ToUpper(strings.TrimSpace(args[1]))
+			value := args[2]
+
 			existing, err := a.API.ListVariables(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
 			var variableId string
 			for _, v := range existing {
-				if v.Name == args[1] {
+				if v.Name == name {
 					variableId = v.Id.String()
 					break
 				}
@@ -59,15 +61,13 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 
 			if variableId == "" {
 				if _, err := a.API.CreateVariable(cmd.Context(), args[0], api.CreateVariableInput{
-					Name:      args[1],
-					Value:     args[2],
+					Name:      name,
+					Value:     value,
 					Sensitive: sensitivePtr,
 				}); err != nil {
 					return err
 				}
 			} else {
-				name := args[1]
-				value := args[2]
 				if err := a.API.UpdateVariable(cmd.Context(), args[0], variableId, api.UpdateVariableInput{
 					Name:      &name,
 					Value:     &value,
@@ -76,7 +76,7 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 					return err
 				}
 			}
-			a.Output.Text("Variable %s set.", args[1])
+			a.Output.Text("Variable %s set.", name)
 			return nil
 		},
 	}
