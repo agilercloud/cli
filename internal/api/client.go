@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -49,9 +50,27 @@ type Client struct {
 // baseURL is the unversioned root (e.g. https://api.agiler.io); /v1 is
 // appended internally so callers and tests can keep using the historical
 // base form.
+//
+// The HTTP client deliberately omits http.Client.Timeout: that field
+// caps the entire request including body read, which would truncate
+// large streaming downloads (backups, project files, billing PDFs).
+// Connection setup and the wait for response headers are still bounded
+// via the transport; once headers arrive, the caller's context.Context
+// is the only deadline on body read.
 func NewClient(baseURL, apiKey string) *Client {
 	base := strings.TrimSuffix(baseURL, "/") + "/v1"
-	raw := &http.Client{Timeout: 30 * time.Second}
+	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ResponseHeaderTimeout: 30 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       90 * time.Second,
+	}
+	raw := &http.Client{Transport: transport}
 
 	impl, _ := publicapi.NewClientWithResponses(base,
 		publicapi.WithHTTPClient(raw),

@@ -101,8 +101,10 @@ func newProjectsCreateCmd(a *app.App) *cobra.Command {
 
 func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "update <project>",
-		Short:             "Update a project",
+		Use:   "update <project>",
+		Short: "Update a project",
+		Long: "Update a project's mutable fields. The root --workspace flag scopes which projects can be addressed; " +
+			"to move the project into a different workspace, use --target-workspace.",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: completeProjectIDs(a),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -124,20 +126,21 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 				in.Runtime = &v
 				touched = true
 			}
-			if cmd.Root().PersistentFlags().Changed("workspace") {
-				v, err := normalizeWorkspaceID(a.FlagWorkspaceID)
+			if cmd.Flags().Changed("target-workspace") {
+				raw, _ := cmd.Flags().GetString("target-workspace")
+				v, err := normalizeWorkspaceID(raw)
 				if err != nil {
 					return err
 				}
 				if v == "" {
-					return fmt.Errorf("workspace must be a valid UUID")
+					return fmt.Errorf("--target-workspace must be a valid UUID")
 				}
 				in.WorkspaceId = &v
 				touched = true
 			}
 
 			if !touched {
-				return fmt.Errorf("no flags provided; use --name, --active, --runtime, or --workspace")
+				return fmt.Errorf("no flags provided; use --name, --active, --runtime, or --target-workspace")
 			}
 
 			result, err := a.API.UpdateProject(cmd.Context(), args[0], in)
@@ -150,7 +153,9 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 	cmd.Flags().String("name", "", "Project name")
 	cmd.Flags().Bool("active", false, "Active state")
 	cmd.Flags().String("runtime", "", "Runtime ID")
+	cmd.Flags().String("target-workspace", "", "Move the project into this workspace (UUID)")
 	_ = cmd.RegisterFlagCompletionFunc("runtime", completeRuntimeIDs(a))
+	_ = cmd.RegisterFlagCompletionFunc("target-workspace", completeWorkspaceIDs(a))
 	return cmd
 }
 
@@ -187,10 +192,8 @@ func newUsageCmd(a *app.App) *cobra.Command {
 				return err
 			}
 			q := api.UsageQuery{}
-			if v, _ := cmd.Flags().GetString("limit"); v != "" {
-				if n, err := parseUintFlag(v); err == nil {
-					q.Limit = n
-				}
+			if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
+				q.Limit = v
 			}
 			if v, _ := cmd.Flags().GetString("since"); v != "" {
 				t, err := time.Parse(time.RFC3339, v)
@@ -217,7 +220,7 @@ func newUsageCmd(a *app.App) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().String("limit", "30", "Page size (default 30, max 365)")
+	cmd.Flags().Int("limit", 30, "Page size (default 30, max 365)")
 	cmd.Flags().String("since", "", "Start of the window, RFC3339 (e.g. 2026-04-01T00:00:00Z)")
 	cmd.Flags().String("until", "", "End of the window, RFC3339")
 	cmd.Flags().String("granularity", "day", "Bucket size: hour|day|week|month (default day)")
@@ -235,10 +238,8 @@ func newLogsCmd(a *app.App) *cobra.Command {
 				return err
 			}
 			q := api.LogsQuery{}
-			if v, _ := cmd.Flags().GetString("limit"); v != "" {
-				if n, err := parseUintFlag(v); err == nil {
-					q.Limit = n
-				}
+			if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
+				q.Limit = v
 			}
 			if v, _ := cmd.Flags().GetString("since"); v != "" {
 				t, err := time.Parse(time.RFC3339, v)
@@ -260,7 +261,7 @@ func newLogsCmd(a *app.App) *cobra.Command {
 			return runLogsQuery(cmd, a, projectID, q)
 		},
 	}
-	cmd.Flags().String("limit", "100", "Maximum number of log entries")
+	cmd.Flags().Int("limit", 100, "Maximum number of log entries")
 	cmd.Flags().String("since", "", "Start of the window, RFC3339")
 	cmd.Flags().String("until", "", "End of the window, RFC3339")
 	cmd.Flags().String("query", "", "Search query")
@@ -377,10 +378,8 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 			}
 			q := api.LogsQuery{Query: args[0], Limit: 100}
 
-			if v, _ := cmd.Flags().GetString("limit"); v != "" {
-				if n, err := parseUintFlag(v); err == nil {
-					q.Limit = n
-				}
+			if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
+				q.Limit = v
 			}
 			if cmd.Flags().Changed("since") {
 				v, _ := cmd.Flags().GetString("since")
@@ -401,24 +400,10 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 			return runLogsQuery(cmd, a, projectID, q)
 		},
 	}
-	cmd.Flags().String("limit", "100", "Maximum number of results")
+	cmd.Flags().Int("limit", 100, "Maximum number of results")
 	cmd.Flags().String("since", "", "Start time (RFC3339 or duration like 1h, 24h)")
 	cmd.Flags().String("until", "", "End time (RFC3339 or duration like 1h, 24h)")
 	return cmd
-}
-
-// parseUintFlag parses a string flag as a non-negative int.
-// Empty / unparseable values return 0 so the caller leaves the
-// corresponding query field unset.
-func parseUintFlag(s string) (int, error) {
-	var n int
-	if _, err := fmt.Sscanf(s, "%d", &n); err != nil {
-		return 0, err
-	}
-	if n < 0 {
-		return 0, fmt.Errorf("must be non-negative")
-	}
-	return n, nil
 }
 
 func runLogsQuery(cmd *cobra.Command, a *app.App, projectID string, q api.LogsQuery) error {

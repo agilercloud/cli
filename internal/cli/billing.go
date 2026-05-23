@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -57,29 +56,18 @@ func newBillingCmd(a *app.App) *cobra.Command {
 			}
 			defer func() { _ = resp.Body.Close() }()
 
-			var dest io.Writer
-			var toClose io.Closer
 			if outputPath == "" || outputPath == "-" {
-				dest = a.Out
-			} else {
-				f, err := os.Create(outputPath)
-				if err != nil {
-					return fmt.Errorf("create output file: %w", err)
+				if _, err := io.Copy(a.Out, resp.Body); err != nil {
+					return fmt.Errorf("write file: %w", err)
 				}
-				dest = f
-				toClose = f
+				return nil
 			}
 
-			n, err := io.Copy(dest, resp.Body)
-			if toClose != nil {
-				_ = toClose.Close()
-			}
+			n, err := writeStreamAtomic(outputPath, resp.Body)
 			if err != nil {
-				return fmt.Errorf("write file: %w", err)
+				return err
 			}
-			if outputPath != "" && outputPath != "-" {
-				a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
-			}
+			a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
 			return nil
 		},
 	}

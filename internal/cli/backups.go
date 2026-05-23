@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/agilercloud/cli/internal/api"
@@ -132,30 +133,18 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 			}
 			defer func() { _ = resp.Body.Close() }()
 
-			var dest io.Writer
-			var toClose io.Closer
 			if outputPath == "" || outputPath == "-" {
-				dest = a.Out
-			} else {
-				f, err := os.Create(outputPath)
-				if err != nil {
-					return fmt.Errorf("create output file: %w", err)
+				if _, err := io.Copy(a.Out, resp.Body); err != nil {
+					return fmt.Errorf("write file: %w", err)
 				}
-				dest = f
-				toClose = f
+				return nil
 			}
 
-			n, err := io.Copy(dest, resp.Body)
-			if toClose != nil {
-				_ = toClose.Close()
-			}
+			n, err := writeStreamAtomic(outputPath, resp.Body)
 			if err != nil {
-				return fmt.Errorf("write file: %w", err)
+				return err
 			}
-
-			if outputPath != "" && outputPath != "-" {
-				a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
-			}
+			a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
 			return nil
 		},
 	}
@@ -256,4 +245,36 @@ func renderBackupPolicy(w *output.Writer, p api.BackupPolicy) {
 	}
 	w.Text("Frequency: every %d days", p.FrequencyDays)
 	w.Text("Retention: %d days", p.RetentionDays)
+}
+
+// writeStreamAtomic copies src into a sibling temp file of outputPath
+// and renames it on success, leaving the existing file at outputPath
+// untouched if the copy fails mid-stream. Returns the number of bytes
+// written.
+func writeStreamAtomic(outputPath string, src io.Reader) (int64, error) {
+	tmp, err := os.CreateTemp(filepath.Dir(outputPath), ".agiler-download-*")
+	if err != nil {
+		return 0, fmt.Errorf("create temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	cleanup := true
+	defer func() {
+		_ = tmp.Close()
+		if cleanup {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	n, err := io.Copy(tmp, src)
+	if err != nil {
+		return n, fmt.Errorf("write file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return n, fmt.Errorf("close temp: %w", err)
+	}
+	if err := os.Rename(tmpPath, outputPath); err != nil {
+		return n, fmt.Errorf("finalize: %w", err)
+	}
+	cleanup = false
+	return n, nil
 }

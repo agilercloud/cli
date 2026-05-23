@@ -210,15 +210,29 @@ func downloadSingleFile(ctx context.Context, client *api.Client, projectID, remo
 		return fmt.Errorf("create parent directory: %w", err)
 	}
 
-	dest, err := os.Create(localPath)
+	tmp, err := os.CreateTemp(filepath.Dir(localPath), ".agiler-download-*")
 	if err != nil {
-		return fmt.Errorf("create output file: %w", err)
+		return fmt.Errorf("create temp file: %w", err)
 	}
-	defer func() { _ = dest.Close() }()
+	tmpPath := tmp.Name()
+	cleanup := true
+	defer func() {
+		_ = tmp.Close()
+		if cleanup {
+			_ = os.Remove(tmpPath)
+		}
+	}()
 
-	if _, err := io.Copy(dest, resp.Body); err != nil {
+	if _, err := io.Copy(tmp, resp.Body); err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("close temp: %w", err)
+	}
+	if err := os.Rename(tmpPath, localPath); err != nil {
+		return fmt.Errorf("finalize: %w", err)
+	}
+	cleanup = false
 
 	if lastMod := resp.Header.Get("Last-Modified"); lastMod != "" {
 		if t, err := http.ParseTime(lastMod); err == nil {
