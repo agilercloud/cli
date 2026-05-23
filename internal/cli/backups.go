@@ -15,8 +15,9 @@ import (
 
 func newBackupsCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "backups",
-		Short: "Manage project backups",
+		Use:     "backups",
+		Aliases: []string{"backup"},
+		Short:   "Manage project backups",
 	}
 
 	cmd.AddCommand(&cobra.Command{

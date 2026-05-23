@@ -12,8 +12,9 @@ import (
 
 func newVariablesCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "variables",
-		Short: "Manage project environment variables",
+		Use:     "variables",
+		Aliases: []string{"variable"},
+		Short:   "Manage project environment variables",
 	}
 
 	cmd.AddCommand(&cobra.Command{

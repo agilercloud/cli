@@ -11,8 +11,9 @@ import (
 
 func newRegionsCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "regions",
-		Short: "List available regions",
+		Use:     "regions",
+		Aliases: []string{"region"},
+		Short:   "List available regions",
 	}
 
 	cmd.AddCommand(&cobra.Command{

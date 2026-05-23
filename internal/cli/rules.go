@@ -16,8 +16,9 @@ import (
 // condition/action/template catalog lives at `rules templates options`.
 func newRulesCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "rules",
-		Short: "Manage project rules",
+		Use:     "rules",
+		Aliases: []string{"rule"},
+		Short:   "Manage project rules",
 	}
 
 	cmd.AddCommand(&cobra.Command{

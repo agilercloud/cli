@@ -220,7 +220,7 @@ func newUsageCmd(a *app.App) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().Int("limit", 30, "Page size (default 30, max 365)")
+	cmd.Flags().Int("limit", 0, "Page size (0 = server default, max 365)")
 	cmd.Flags().String("since", "", "Start of the window, RFC3339 (e.g. 2026-04-01T00:00:00Z)")
 	cmd.Flags().String("until", "", "End of the window, RFC3339")
 	cmd.Flags().String("granularity", "day", "Bucket size: hour|day|week|month (default day)")
@@ -229,9 +229,10 @@ func newUsageCmd(a *app.App) *cobra.Command {
 
 func newLogsCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "logs",
-		Short: "Get project logs",
-		Args:  cobra.NoArgs,
+		Use:     "logs",
+		Aliases: []string{"log"},
+		Short:   "Get project logs",
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
@@ -261,7 +262,7 @@ func newLogsCmd(a *app.App) *cobra.Command {
 			return runLogsQuery(cmd, a, projectID, q)
 		},
 	}
-	cmd.Flags().Int("limit", 100, "Maximum number of log entries")
+	cmd.Flags().Int("limit", 0, "Maximum entries returned (0 = server default)")
 	cmd.Flags().String("since", "", "Start of the window, RFC3339")
 	cmd.Flags().String("until", "", "End of the window, RFC3339")
 	cmd.Flags().String("query", "", "Search query")
@@ -376,7 +377,7 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			q := api.LogsQuery{Query: args[0], Limit: 100}
+			q := api.LogsQuery{Query: args[0]}
 
 			if v, _ := cmd.Flags().GetInt("limit"); v > 0 {
 				q.Limit = v
@@ -400,7 +401,7 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 			return runLogsQuery(cmd, a, projectID, q)
 		},
 	}
-	cmd.Flags().Int("limit", 100, "Maximum number of results")
+	cmd.Flags().Int("limit", 0, "Maximum entries returned (0 = server default)")
 	cmd.Flags().String("since", "", "Start time (RFC3339 or duration like 1h, 24h)")
 	cmd.Flags().String("until", "", "End time (RFC3339 or duration like 1h, 24h)")
 	return cmd

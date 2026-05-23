@@ -12,8 +12,9 @@ import (
 
 func newNotificationsCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "notifications",
-		Short: "List and dismiss account notifications",
+		Use:     "notifications",
+		Aliases: []string{"notification"},
+		Short:   "List and dismiss account notifications",
 	}
 
 	cmd.AddCommand(&cobra.Command{

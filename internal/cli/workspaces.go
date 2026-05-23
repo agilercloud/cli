@@ -12,7 +12,7 @@ import (
 func newWorkspacesCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "workspaces",
-		Aliases: []string{"workspace", "w"},
+		Aliases: []string{"workspace"},
 		Short:   "Manage workspaces",
 	}
 

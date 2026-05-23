@@ -11,8 +11,9 @@ import (
 
 func newDomainsCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "domains",
-		Short: "Manage project domains",
+		Use:     "domains",
+		Aliases: []string{"domain"},
+		Short:   "Manage project domains",
 	}
 
 	cmd.AddCommand(&cobra.Command{

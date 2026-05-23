@@ -20,8 +20,9 @@ import (
 
 func newFilesCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "files",
-		Short: "Manage project files",
+		Use:     "files",
+		Aliases: []string{"file"},
+		Short:   "Manage project files",
 	}
 
 	cmd.AddCommand(newFilesListCmd(a))
@@ -193,7 +194,7 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolP("force", "f", false, "Force transfer even if file is unchanged")
-	cmd.Flags().BoolP("overwrite", "o", false, "Overwrite the remote destination if it already exists (default: fail with 412 if exists)")
+	cmd.Flags().Bool("overwrite", false, "Overwrite the remote destination if it already exists (default: fail with 412 if exists)")
 	return cmd
 }
 
@@ -444,7 +445,7 @@ func newFilesTransferCmd(a *app.App, name, short, sourceHeader, successText stri
 			return nil
 		},
 	}
-	cmd.Flags().BoolP("overwrite", "o", false, "Overwrite the destination if it already exists (default: fail with 412 if exists)")
+	cmd.Flags().Bool("overwrite", false, "Overwrite the destination if it already exists (default: fail with 412 if exists)")
 	return cmd
 }
 

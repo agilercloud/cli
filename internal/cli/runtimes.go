@@ -11,8 +11,9 @@ import (
 
 func newRuntimesCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "runtimes",
-		Short: "List available runtimes",
+		Use:     "runtimes",
+		Aliases: []string{"runtime"},
+		Short:   "List available runtimes",
 	}
 
 	cmd.AddCommand(&cobra.Command{

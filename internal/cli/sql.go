@@ -101,7 +101,7 @@ func newSQLHistoryCmd(a *app.App) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum number of history entries (server default 50, max 200)")
+	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum entries returned (0 = server default, max 200)")
 	return cmd
 }
 
