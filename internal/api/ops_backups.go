@@ -77,15 +77,22 @@ func (c *Client) GetBackupPolicy(ctx context.Context, projectID string) (*Backup
 	return resp.JSON200, nil
 }
 
-// SetBackupPolicy patches the per-project backup schedule.
-func (c *Client) SetBackupPolicy(ctx context.Context, projectID string, in UpdateBackupPolicy) error {
+// SetBackupPolicy patches the per-project backup schedule and returns the
+// refreshed policy.
+func (c *Client) SetBackupPolicy(ctx context.Context, projectID string, in UpdateBackupPolicy) (*BackupPolicy, error) {
 	resp, err := c.impl.UpdateProjectBackupPolicyWithResponse(
 		ctx, projectID, &publicapi.UpdateProjectBackupPolicyParams{}, in,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return checkStatus(resp.StatusCode(), resp.Body)
+	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, errEmptyBody
+	}
+	return resp.JSON200, nil
 }
 
 // BackupArtifact selects which artifact of a backup to download.

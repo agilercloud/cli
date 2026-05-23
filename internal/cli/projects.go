@@ -144,11 +144,11 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 				return fmt.Errorf("no flags provided; use --name, --active, --runtime, or --workspace")
 			}
 
-			if err := a.API.UpdateProject(cmd.Context(), args[0], in); err != nil {
+			result, err := a.API.UpdateProject(cmd.Context(), args[0], in)
+			if err != nil {
 				return err
 			}
-			a.Output.Text("Project updated.")
-			return nil
+			return renderProjectDetail(a.Output, *result)
 		},
 	}
 	cmd.Flags().String("name", "", "Project name")

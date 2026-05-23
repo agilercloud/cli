@@ -59,24 +59,33 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 				}
 			}
 
+			var result *api.Variable
 			if variableId == "" {
-				if _, err := a.API.CreateVariable(cmd.Context(), args[0], api.CreateVariableInput{
+				v, err := a.API.CreateVariable(cmd.Context(), args[0], api.CreateVariableInput{
 					Name:      name,
 					Value:     value,
 					Sensitive: sensitivePtr,
-				}); err != nil {
+				})
+				if err != nil {
 					return err
 				}
+				result = v
 			} else {
-				if err := a.API.UpdateVariable(cmd.Context(), args[0], variableId, api.UpdateVariableInput{
+				v, err := a.API.UpdateVariable(cmd.Context(), args[0], variableId, api.UpdateVariableInput{
 					Name:      &name,
 					Value:     &value,
 					Sensitive: sensitivePtr,
-				}); err != nil {
+				})
+				if err != nil {
 					return err
 				}
+				result = v
 			}
-			a.Output.Text("Variable %s set.", name)
+			if a.Output.IsStructured() {
+				a.Output.Structured(result)
+			} else {
+				a.Output.Text("Variable %s set (sensitive=%t).", result.Name, result.Sensitive)
+			}
 			return nil
 		},
 	}

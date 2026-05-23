@@ -163,10 +163,11 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 			if !touched {
 				return fmt.Errorf("provide --frequency-days and/or --retention-days")
 			}
-			if err := a.API.SetBackupPolicy(cmd.Context(), args[0], in); err != nil {
+			policy, err := a.API.SetBackupPolicy(cmd.Context(), args[0], in)
+			if err != nil {
 				return err
 			}
-			a.Output.Text("Backup policy updated.")
+			renderBackupPolicy(a.Output, *policy)
 			return nil
 		},
 	})

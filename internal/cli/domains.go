@@ -53,10 +53,15 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			p := true
-			if err := a.API.UpdateDomain(cmd.Context(), args[0], args[1], api.UpdateDomainInput{Primary: &p}); err != nil {
+			d, err := a.API.UpdateDomain(cmd.Context(), args[0], args[1], api.UpdateDomainInput{Primary: &p})
+			if err != nil {
 				return err
 			}
-			a.Output.Text("Primary domain set.")
+			if a.Output.IsStructured() {
+				a.Output.Structured(d)
+			} else {
+				a.Output.Text("Primary domain set to %s.", d.Name)
+			}
 			return nil
 		},
 	})

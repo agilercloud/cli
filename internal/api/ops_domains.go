@@ -37,15 +37,22 @@ func (c *Client) CreateDomain(ctx context.Context, projectID string, in CreateDo
 	return resp.JSON201, nil
 }
 
-// UpdateDomain patches a domain (currently: primary flag).
-func (c *Client) UpdateDomain(ctx context.Context, projectID, domainID string, in UpdateDomainInput) error {
+// UpdateDomain patches a domain (currently: primary flag) and returns the
+// refreshed entity.
+func (c *Client) UpdateDomain(ctx context.Context, projectID, domainID string, in UpdateDomainInput) (*Domain, error) {
 	resp, err := c.impl.UpdateProjectDomainWithResponse(
 		ctx, projectID, domainID, &publicapi.UpdateProjectDomainParams{}, in,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return checkStatus(resp.StatusCode(), resp.Body)
+	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, errEmptyBody
+	}
+	return resp.JSON200, nil
 }
 
 // DeleteDomain detaches a domain.

@@ -4791,6 +4791,7 @@ func (r GetProjectResponse) ContentType() string {
 type UpdateProjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ProjectDetail
 	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
@@ -4933,6 +4934,7 @@ func (r GetProjectBackupPolicyResponse) ContentType() string {
 type UpdateProjectBackupPolicyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ProjectBackupPolicyOutput
 	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
@@ -5214,6 +5216,7 @@ func (r DeleteProjectDomainResponse) ContentType() string {
 type UpdateProjectDomainResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ProjectDomainOutput
 	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
@@ -5569,6 +5572,7 @@ func (r GetProjectRuleResponse) ContentType() string {
 type UpdateProjectRuleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ProjectRuleOutput
 	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
@@ -5889,6 +5893,7 @@ func (r DeleteProjectVariableResponse) ContentType() string {
 type UpdateProjectVariableResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *ProjectVariableOutput
 	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
@@ -7419,6 +7424,13 @@ func ParseUpdateProjectResponse(rsp *http.Response) (*UpdateProjectResponse, err
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProjectDetail
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -7677,6 +7689,13 @@ func ParseUpdateProjectBackupPolicyResponse(rsp *http.Response) (*UpdateProjectB
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProjectBackupPolicyOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8172,6 +8191,13 @@ func ParseUpdateProjectDomainResponse(rsp *http.Response) (*UpdateProjectDomainR
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProjectDomainOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8820,6 +8846,13 @@ func ParseUpdateProjectRuleResponse(rsp *http.Response) (*UpdateProjectRuleRespo
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProjectRuleOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9404,6 +9437,13 @@ func ParseUpdateProjectVariableResponse(rsp *http.Response) (*UpdateProjectVaria
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ProjectVariableOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

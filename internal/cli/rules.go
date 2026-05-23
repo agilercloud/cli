@@ -99,10 +99,15 @@ func newProjectRulesCmd(a *app.App) *cobra.Command {
 			if err := json.Unmarshal(data, &in); err != nil {
 				return fmt.Errorf("invalid rule JSON: %w", err)
 			}
-			if err := a.API.UpdateRule(cmd.Context(), args[0], args[1], in); err != nil {
+			r, err := a.API.UpdateRule(cmd.Context(), args[0], args[1], in)
+			if err != nil {
 				return err
 			}
-			a.Output.Text("Rule updated.")
+			if a.Output.IsStructured() {
+				a.Output.Structured(r)
+			} else {
+				a.Output.Text("Rule %s updated.", r.Name)
+			}
 			return nil
 		},
 	})

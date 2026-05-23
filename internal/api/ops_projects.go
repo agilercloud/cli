@@ -59,13 +59,20 @@ func (c *Client) CreateProject(ctx context.Context, in CreateProjectInput) (*Pro
 	return resp.JSON201, nil
 }
 
-// UpdateProject patches a project. The server returns 204; no body.
-func (c *Client) UpdateProject(ctx context.Context, projectID string, in UpdateProjectInput) error {
+// UpdateProject patches a project and returns the refreshed entity, so
+// callers can render the new state without a follow-up GetProject.
+func (c *Client) UpdateProject(ctx context.Context, projectID string, in UpdateProjectInput) (*ProjectDetail, error) {
 	resp, err := c.impl.UpdateProjectWithResponse(ctx, projectID, &publicapi.UpdateProjectParams{}, in)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return checkStatus(resp.StatusCode(), resp.Body)
+	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+		return nil, err
+	}
+	if resp.JSON200 == nil {
+		return nil, errEmptyBody
+	}
+	return resp.JSON200, nil
 }
 
 // DeleteProject removes a project.
