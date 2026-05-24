@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"github.com/agilercloud/cli/internal/publicapi"
@@ -52,15 +51,13 @@ func (c *Client) RunSQL(ctx context.Context, projectID string, in CreateSQLState
 }
 
 // ListSQLStatements returns recent statements for a project, newest
-// first. limit caps the total entries returned and is paginated across
-// Link rel="next" pages as needed (limit ≤ 0 returns the full history).
-//
-// The /sql/statements response is typed as a freeform JSON object in
-// the spec (it's proxied from the edge runtime) but the wire shape is
-// actually an array — so we drop down to the raw HTTP client to read
-// the body bytes directly and decode into the typed slice.
-func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit int) ([]SQLStatement, error) {
-	var all []SQLStatement
+// first. Each item is the slim list projection (id, status, submitted_at,
+// duration_ms, sql_preview); call GetSQLStatement to fetch the full
+// entity including rows. limit caps the total entries returned and is
+// paginated across Link rel="next" pages as needed (limit ≤ 0 returns
+// the full history).
+func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit int) ([]SQLStatementListItem, error) {
+	var all []SQLStatementListItem
 	seen := map[string]struct{}{}
 	var cursor *string
 	for {
@@ -73,29 +70,20 @@ func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit 
 			pageSize := remaining
 			params.Limit = &pageSize
 		}
-		httpResp, err := c.impl.ListProjectSQLStatements(ctx, projectID, params)
+		resp, err := c.impl.ListProjectSQLStatementsWithResponse(ctx, projectID, params)
 		if err != nil {
 			return nil, err
 		}
-		body, readErr := io.ReadAll(httpResp.Body)
-		_ = httpResp.Body.Close()
-		if readErr != nil {
-			return nil, readErr
-		}
-		if err := checkStatus(httpResp.StatusCode, body); err != nil {
+		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
 			return nil, err
 		}
-		if len(body) > 0 {
-			var page []SQLStatement
-			if err := json.Unmarshal(body, &page); err != nil {
-				return nil, err
-			}
-			all = append(all, page...)
+		if resp.JSON200 != nil {
+			all = append(all, *resp.JSON200...)
 		}
 		if limit > 0 && len(all) >= limit {
 			return all[:limit], nil
 		}
-		next := nextCursorFromHeaders(httpResp.Header)
+		next := nextCursorFromHeaders(resp.HTTPResponse.Header)
 		if next == "" {
 			return all, nil
 		}

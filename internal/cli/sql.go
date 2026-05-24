@@ -281,7 +281,7 @@ func formatCell(v any) string {
 	}
 }
 
-func renderSQLHistory(a *app.App, items []api.SQLStatement) {
+func renderSQLHistory(a *app.App, items []api.SQLStatementListItem) {
 	if a.Output.IsStructured() {
 		a.Output.Structured(items)
 		return
@@ -296,10 +296,12 @@ func renderSQLHistory(a *app.App, items []api.SQLStatement) {
 		if s.DurationMs != nil {
 			duration = fmt.Sprintf("%dms", *s.DurationMs)
 		}
+		// SqlPreview is already truncated server-side to 80 runes (ending
+		// in "…" if longer); the table column then trims further to fit.
 		rows[i] = []string{
-			s.ID,
+			s.Id,
 			s.Status,
-			truncateForTable(s.SQL, 60),
+			truncateForTable(s.SqlPreview, 60),
 			s.SubmittedAt,
 			duration,
 		}

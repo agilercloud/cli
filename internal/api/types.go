@@ -52,6 +52,13 @@ type (
 	UpdateBillingInput   = publicapi.UpdateBillingInput
 	CreateSQLStatement   = publicapi.CreateSQLStatementInput
 	UsageGranularity     = publicapi.GetProjectUsageParamsGranularity
+
+	// SQLStatementListItem is the slim per-entry shape returned by the
+	// /sql/statements list endpoint (id, status, submitted_at, duration_ms,
+	// sql_preview). The full entity — including the unredacted SQL, columns,
+	// rows, etc. — is only returned by the single-statement GET, which
+	// keeps using the hand-rolled SQLStatement type below.
+	SQLStatementListItem = publicapi.StatementListItem
 )
 
 // Granularity constants for project usage queries. Mirror publicapi's

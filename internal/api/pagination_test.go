@@ -102,7 +102,7 @@ func TestListSQLStatementsRespectsLimit(t *testing.T) {
 		calls++
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Link", `</v1/projects/proj/sql/statements?cursor=more>; rel="next"`)
-		_, _ = w.Write([]byte(`[{"id":"00000000-0000-0000-0000-00000000000` + itoa(calls) + `","status":"success","submitted_at":"2025-01-01T00:00:00Z"}]`))
+		_, _ = w.Write([]byte(`[{"id":"00000000-0000-0000-0000-00000000000` + itoa(calls) + `","status":"success","submitted_at":"2025-01-01T00:00:00Z","sql_preview":"SELECT 1"}]`))
 	}))
 	defer server.Close()
 
@@ -113,6 +113,9 @@ func TestListSQLStatementsRespectsLimit(t *testing.T) {
 	}
 	if len(got) != 2 {
 		t.Fatalf("got %d items, want 2", len(got))
+	}
+	if got[0].SqlPreview != "SELECT 1" {
+		t.Fatalf("sql_preview = %q, want %q", got[0].SqlPreview, "SELECT 1")
 	}
 }
 

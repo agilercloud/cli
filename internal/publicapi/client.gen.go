@@ -419,6 +419,15 @@ type SelfUser struct {
 	Name            string             `json:"name"`
 }
 
+// StatementListItem defines model for StatementListItem.
+type StatementListItem struct {
+	DurationMs  *int   `json:"duration_ms,omitempty"`
+	Id          string `json:"id"`
+	SqlPreview  string `json:"sql_preview"`
+	Status      string `json:"status"`
+	SubmittedAt string `json:"submitted_at"`
+}
+
 // UpdateBillingInput defines model for UpdateBillingInput.
 type UpdateBillingInput struct {
 	BudgetAlerts    *[]int `json:"budget_alerts,omitempty"`
@@ -6158,7 +6167,7 @@ func (r UpdateProjectRuleResponse) ContentType() string {
 type ListProjectSQLStatementsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *FreeformObject
+	JSON200      *[]StatementListItem
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
@@ -9471,7 +9480,7 @@ func ParseListProjectSQLStatementsResponse(rsp *http.Response) (*ListProjectSQLS
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest FreeformObject
+		var dest []StatementListItem
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
