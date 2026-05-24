@@ -1,3 +1,3 @@
-ID                                    NAME       ROLE    BILLING  REQUIRE MFA  MFA REQUIRED
-00000000-0000-0000-0000-000000000001  Main       admin   yes      no           no
-00000000-0000-0000-0000-000000000002  Read Only  viewer  no       yes          yes
+ID                                    NAME       ROLE    REQUIRE MFA
+00000000-0000-0000-0000-000000000001  Main       admin   no
+00000000-0000-0000-0000-000000000002  Read Only  viewer  yes

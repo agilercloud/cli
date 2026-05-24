@@ -110,7 +110,7 @@ func TestCompleteWorkspaceIDs(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[
-			{"id":"00000000-0000-0000-0000-000000000010","name":"Main","role":"admin","billing_user_id":"00000000-0000-0000-0000-0000000000aa","is_billing_user":true,"require_mfa":false,"mfa_required_for_caller":false,"created_at":"2025-01-01T00:00:00Z","updated_at":"2025-01-01T00:00:00Z"}
+			{"id":"00000000-0000-0000-0000-000000000010","name":"Main","role":"admin","billing_user_id":"00000000-0000-0000-0000-0000000000aa","require_mfa":false,"created_at":"2025-01-01T00:00:00Z","updated_at":"2025-01-01T00:00:00Z"}
 		]`))
 	}))
 	defer server.Close()

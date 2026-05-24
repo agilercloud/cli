@@ -123,12 +123,10 @@ func renderWorkspacesList(w *output.Writer, ws []api.Workspace) {
 			s.Id.String(),
 			s.Name,
 			s.Role,
-			output.YesNo(s.IsBillingUser),
 			output.YesNo(s.RequireMfa),
-			output.YesNo(s.MfaRequiredForCaller),
 		}
 	}
-	w.Table([]string{"ID", "NAME", "ROLE", "BILLING", "REQUIRE MFA", "MFA REQUIRED"}, rows)
+	w.Table([]string{"ID", "NAME", "ROLE", "REQUIRE MFA"}, rows)
 }
 
 func renderWorkspaceDetail(w *output.Writer, s api.Workspace) error {
@@ -146,10 +144,8 @@ func renderWorkspaceDetail(w *output.Writer, s api.Workspace) error {
 	w.Text("%s %s", w.OutColor.Dim("ID:             "), s.Id)
 	w.Text("%s %s", w.OutColor.Dim("Name:           "), s.Name)
 	w.Text("%s %s", w.OutColor.Dim("Role:           "), s.Role)
-	w.Text("%s %s", w.OutColor.Dim("Billing User:   "), output.YesNo(s.IsBillingUser))
 	w.Text("%s %s", w.OutColor.Dim("Billing User ID:"), s.BillingUserId)
 	w.Text("%s %s", w.OutColor.Dim("Require MFA:    "), output.YesNo(s.RequireMfa))
-	w.Text("%s %s", w.OutColor.Dim("MFA Required:   "), output.YesNo(s.MfaRequiredForCaller))
 	w.Text("%s %s", w.OutColor.Dim("Created:        "), s.CreatedAt.Format(time.RFC3339))
 	w.Text("%s %s", w.OutColor.Dim("Updated:        "), s.UpdatedAt.Format(time.RFC3339))
 	return nil

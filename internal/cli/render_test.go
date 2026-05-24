@@ -82,8 +82,8 @@ func TestRenderProjectDetail(t *testing.T) {
 
 func TestRenderWorkspacesList(t *testing.T) {
 	data := []api.Workspace{
-		{Id: testID1, Name: "Main", Role: "admin", IsBillingUser: true, RequireMfa: false, MfaRequiredForCaller: false, CreatedAt: testTime, UpdatedAt: testTime},
-		{Id: testID2, Name: "Read Only", Role: "viewer", IsBillingUser: false, RequireMfa: true, MfaRequiredForCaller: true, CreatedAt: testTime, UpdatedAt: testTime},
+		{Id: testID1, Name: "Main", Role: "admin", RequireMfa: false, CreatedAt: testTime, UpdatedAt: testTime},
+		{Id: testID2, Name: "Read Only", Role: "viewer", RequireMfa: true, CreatedAt: testTime, UpdatedAt: testTime},
 	}
 	assertRender(t, "workspaces_list_text.txt",
 		func(w *output.Writer) { renderWorkspacesList(w, data) }, output.FormatText, false)
@@ -95,15 +95,13 @@ func TestRenderWorkspacesList(t *testing.T) {
 
 func TestRenderWorkspaceDetail(t *testing.T) {
 	data := api.Workspace{
-		Id:                   testID1,
-		Name:                 "Main",
-		Role:                 "admin",
-		BillingUserId:        testID2,
-		IsBillingUser:        true,
-		RequireMfa:           true,
-		MfaRequiredForCaller: false,
-		CreatedAt:            testTime,
-		UpdatedAt:            time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
+		Id:            testID1,
+		Name:          "Main",
+		Role:          "admin",
+		BillingUserId: testID2,
+		RequireMfa:    true,
+		CreatedAt:     testTime,
+		UpdatedAt:     time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC),
 	}
 	assertRender(t, "workspace_detail_text.txt",
 		func(w *output.Writer) { _ = renderWorkspaceDetail(w, data) }, output.FormatText, false)

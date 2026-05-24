@@ -504,15 +504,13 @@ type WorkspaceMemberOutput struct {
 
 // WorkspaceOutput defines model for WorkspaceOutput.
 type WorkspaceOutput struct {
-	BillingUserId        openapi_types.UUID `json:"billing_user_id"`
-	CreatedAt            time.Time          `json:"created_at"`
-	Id                   openapi_types.UUID `json:"id"`
-	IsBillingUser        bool               `json:"is_billing_user"`
-	MfaRequiredForCaller bool               `json:"mfa_required_for_caller"`
-	Name                 string             `json:"name"`
-	RequireMfa           bool               `json:"require_mfa"`
-	Role                 string             `json:"role"`
-	UpdatedAt            time.Time          `json:"updated_at"`
+	BillingUserId openapi_types.UUID `json:"billing_user_id"`
+	CreatedAt     time.Time          `json:"created_at"`
+	Id            openapi_types.UUID `json:"id"`
+	Name          string             `json:"name"`
+	RequireMfa    bool               `json:"require_mfa"`
+	Role          string             `json:"role"`
+	UpdatedAt     time.Time          `json:"updated_at"`
 }
 
 // apiKeyAuthContextKey is the context key for apiKeyAuth security scheme
