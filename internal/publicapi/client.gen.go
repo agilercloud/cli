@@ -71,9 +71,10 @@ type BillingOutput struct {
 
 // BillingTransactionEntry defines model for BillingTransactionEntry.
 type BillingTransactionEntry struct {
-	Amount      int       `json:"amount"`
-	CreatedAt   time.Time `json:"created_at"`
-	Description string    `json:"description"`
+	Amount      int        `json:"amount"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Description string     `json:"description"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 }
 
 // BillingTransactionMonth defines model for BillingTransactionMonth.
