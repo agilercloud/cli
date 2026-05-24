@@ -512,6 +512,12 @@ type apiKeyAuthContextKey string
 type ListProjectsParams struct {
 	// WorkspaceId Filter projects to a workspace id.
 	WorkspaceId *openapi_types.UUID `form:"workspace_id,omitempty" json:"workspace_id,omitempty"`
+
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // CreateProjectParams defines parameters for CreateProject.
@@ -530,6 +536,15 @@ type DeleteProjectParams struct {
 type UpdateProjectParams struct {
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
+}
+
+// ListProjectBackupsParams defines parameters for ListProjectBackups.
+type ListProjectBackupsParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // CreateProjectBackupParams defines parameters for CreateProjectBackup.
@@ -559,6 +574,15 @@ type RestoreProjectBackupParams struct {
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
 }
 
+// ListProjectDomainsParams defines parameters for ListProjectDomains.
+type ListProjectDomainsParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // CreateProjectDomainParams defines parameters for CreateProjectDomain.
 type CreateProjectDomainParams struct {
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
@@ -577,10 +601,28 @@ type UpdateProjectDomainParams struct {
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
 }
 
+// ListProjectFilesParams defines parameters for ListProjectFiles.
+type ListProjectFilesParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // DeleteProjectFileParams defines parameters for DeleteProjectFile.
 type DeleteProjectFileParams struct {
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
+}
+
+// GetProjectFileParams defines parameters for GetProjectFile.
+type GetProjectFileParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // PutProjectFileParams defines parameters for PutProjectFile.
@@ -602,6 +644,15 @@ type GetProjectLogsParams struct {
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// ListProjectRulesParams defines parameters for ListProjectRules.
+type ListProjectRulesParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // CreateProjectRuleParams defines parameters for CreateProjectRule.
 type CreateProjectRuleParams struct {
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
@@ -618,6 +669,15 @@ type DeleteProjectRuleParams struct {
 type UpdateProjectRuleParams struct {
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
+}
+
+// ListProjectSQLStatementsParams defines parameters for ListProjectSQLStatements.
+type ListProjectSQLStatementsParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // RunSQLStatementParams defines parameters for RunSQLStatement.
@@ -643,12 +703,24 @@ type GetProjectUsageParams struct {
 	// Granularity Bucket size for the returned series. Defaults to day.
 	Granularity *GetProjectUsageParamsGranularity `form:"granularity,omitempty" json:"granularity,omitempty"`
 
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
 	// Limit Maximum number of buckets to return.
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // GetProjectUsageParamsGranularity defines parameters for GetProjectUsage.
 type GetProjectUsageParamsGranularity string
+
+// ListProjectVariablesParams defines parameters for ListProjectVariables.
+type ListProjectVariablesParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // CreateProjectVariableParams defines parameters for CreateProjectVariable.
 type CreateProjectVariableParams struct {
@@ -668,6 +740,24 @@ type UpdateProjectVariableParams struct {
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
 }
 
+// ListRegionsParams defines parameters for ListRegions.
+type ListRegionsParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListRuntimesParams defines parameters for ListRuntimes.
+type ListRuntimesParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // UpdateMeBillingParams defines parameters for UpdateMeBilling.
 type UpdateMeBillingParams struct {
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
@@ -680,6 +770,15 @@ type ListMeBillingTransactionsParams struct {
 	Month  *int    `form:"month,omitempty" json:"month,omitempty"`
 	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
 	Limit  *int    `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// ListMeNotificationsParams defines parameters for ListMeNotifications.
+type ListMeNotificationsParams struct {
+	// Cursor Cursor for the next page (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of results to return.
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // DeleteMeNotificationParams defines parameters for DeleteMeNotification.
@@ -823,7 +922,7 @@ type ClientInterface interface {
 	UpdateProject(ctx context.Context, project string, params *UpdateProjectParams, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectBackups request
-	ListProjectBackups(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectBackups(ctx context.Context, project string, params *ListProjectBackupsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectBackup request
 	CreateProjectBackup(ctx context.Context, project string, params *CreateProjectBackupParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -849,7 +948,7 @@ type ClientInterface interface {
 	DownloadProjectBackupStorage(ctx context.Context, project string, backup string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectDomains request
-	ListProjectDomains(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectDomains(ctx context.Context, project string, params *ListProjectDomainsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectDomainWithBody request with any body
 	CreateProjectDomainWithBody(ctx context.Context, project string, params *CreateProjectDomainParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -865,13 +964,13 @@ type ClientInterface interface {
 	UpdateProjectDomain(ctx context.Context, project string, domain string, params *UpdateProjectDomainParams, body UpdateProjectDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectFiles request
-	ListProjectFiles(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectFiles(ctx context.Context, project string, params *ListProjectFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteProjectFile request
 	DeleteProjectFile(ctx context.Context, project string, path string, params *DeleteProjectFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectFile request
-	GetProjectFile(ctx context.Context, project string, path string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectFile(ctx context.Context, project string, path string, params *GetProjectFileParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PutProjectFileWithBody request with any body
 	PutProjectFileWithBody(ctx context.Context, project string, path string, params *PutProjectFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -880,7 +979,7 @@ type ClientInterface interface {
 	GetProjectLogs(ctx context.Context, project string, params *GetProjectLogsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectRules request
-	ListProjectRules(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectRules(ctx context.Context, project string, params *ListProjectRulesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectRuleWithBody request with any body
 	CreateProjectRuleWithBody(ctx context.Context, project string, params *CreateProjectRuleParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -899,7 +998,7 @@ type ClientInterface interface {
 	UpdateProjectRule(ctx context.Context, project string, rule string, params *UpdateProjectRuleParams, body UpdateProjectRuleJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectSQLStatements request
-	ListProjectSQLStatements(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectSQLStatements(ctx context.Context, project string, params *ListProjectSQLStatementsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// RunSQLStatementWithBody request with any body
 	RunSQLStatementWithBody(ctx context.Context, project string, params *RunSQLStatementParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -916,7 +1015,7 @@ type ClientInterface interface {
 	GetProjectUsage(ctx context.Context, project string, params *GetProjectUsageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListProjectVariables request
-	ListProjectVariables(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListProjectVariables(ctx context.Context, project string, params *ListProjectVariablesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateProjectVariableWithBody request with any body
 	CreateProjectVariableWithBody(ctx context.Context, project string, params *CreateProjectVariableParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -932,7 +1031,7 @@ type ClientInterface interface {
 	UpdateProjectVariable(ctx context.Context, project string, variable string, params *UpdateProjectVariableParams, body UpdateProjectVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRegions request
-	ListRegions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListRegions(ctx context.Context, params *ListRegionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRegion request
 	GetRegion(ctx context.Context, region string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -941,7 +1040,7 @@ type ClientInterface interface {
 	ListRuleOptions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListRuntimes request
-	ListRuntimes(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListRuntimes(ctx context.Context, params *ListRuntimesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetRuntime request
 	GetRuntime(ctx context.Context, runtimeid string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -967,7 +1066,7 @@ type ClientInterface interface {
 	ListMeBillingTransactions(ctx context.Context, params *ListMeBillingTransactionsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListMeNotifications request
-	ListMeNotifications(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListMeNotifications(ctx context.Context, params *ListMeNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteMeNotification request
 	DeleteMeNotification(ctx context.Context, notification string, params *DeleteMeNotificationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1077,8 +1176,8 @@ func (c *Client) UpdateProject(ctx context.Context, project string, params *Upda
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListProjectBackups(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectBackupsRequest(c.Server, project)
+func (c *Client) ListProjectBackups(ctx context.Context, project string, params *ListProjectBackupsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectBackupsRequest(c.Server, project, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1185,8 +1284,8 @@ func (c *Client) DownloadProjectBackupStorage(ctx context.Context, project strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListProjectDomains(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectDomainsRequest(c.Server, project)
+func (c *Client) ListProjectDomains(ctx context.Context, project string, params *ListProjectDomainsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectDomainsRequest(c.Server, project, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1257,8 +1356,8 @@ func (c *Client) UpdateProjectDomain(ctx context.Context, project string, domain
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListProjectFiles(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectFilesRequest(c.Server, project)
+func (c *Client) ListProjectFiles(ctx context.Context, project string, params *ListProjectFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectFilesRequest(c.Server, project, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1281,8 +1380,8 @@ func (c *Client) DeleteProjectFile(ctx context.Context, project string, path str
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProjectFile(ctx context.Context, project string, path string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProjectFileRequest(c.Server, project, path)
+func (c *Client) GetProjectFile(ctx context.Context, project string, path string, params *GetProjectFileParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProjectFileRequest(c.Server, project, path, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1317,8 +1416,8 @@ func (c *Client) GetProjectLogs(ctx context.Context, project string, params *Get
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListProjectRules(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectRulesRequest(c.Server, project)
+func (c *Client) ListProjectRules(ctx context.Context, project string, params *ListProjectRulesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectRulesRequest(c.Server, project, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1401,8 +1500,8 @@ func (c *Client) UpdateProjectRule(ctx context.Context, project string, rule str
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListProjectSQLStatements(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectSQLStatementsRequest(c.Server, project)
+func (c *Client) ListProjectSQLStatements(ctx context.Context, project string, params *ListProjectSQLStatementsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectSQLStatementsRequest(c.Server, project, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1473,8 +1572,8 @@ func (c *Client) GetProjectUsage(ctx context.Context, project string, params *Ge
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListProjectVariables(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListProjectVariablesRequest(c.Server, project)
+func (c *Client) ListProjectVariables(ctx context.Context, project string, params *ListProjectVariablesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectVariablesRequest(c.Server, project, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1545,8 +1644,8 @@ func (c *Client) UpdateProjectVariable(ctx context.Context, project string, vari
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListRegions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListRegionsRequest(c.Server)
+func (c *Client) ListRegions(ctx context.Context, params *ListRegionsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRegionsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1581,8 +1680,8 @@ func (c *Client) ListRuleOptions(ctx context.Context, reqEditors ...RequestEdito
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListRuntimes(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListRuntimesRequest(c.Server)
+func (c *Client) ListRuntimes(ctx context.Context, params *ListRuntimesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListRuntimesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1689,8 +1788,8 @@ func (c *Client) ListMeBillingTransactions(ctx context.Context, params *ListMeBi
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListMeNotifications(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListMeNotificationsRequest(c.Server)
+func (c *Client) ListMeNotifications(ctx context.Context, params *ListMeNotificationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListMeNotificationsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1828,6 +1927,30 @@ func NewListProjectsRequest(server string, params *ListProjectsParams) (*http.Re
 		if params.WorkspaceId != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "workspace_id", *params.WorkspaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -2052,7 +2175,7 @@ func NewUpdateProjectRequestWithBody(server string, project string, params *Upda
 }
 
 // NewListProjectBackupsRequest generates requests for ListProjectBackups
-func NewListProjectBackupsRequest(server string, project string) (*http.Request, error) {
+func NewListProjectBackupsRequest(server string, project string, params *ListProjectBackupsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2075,6 +2198,45 @@ func NewListProjectBackupsRequest(server string, project string) (*http.Request,
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -2452,7 +2614,7 @@ func NewDownloadProjectBackupStorageRequest(server string, project string, backu
 }
 
 // NewListProjectDomainsRequest generates requests for ListProjectDomains
-func NewListProjectDomainsRequest(server string, project string) (*http.Request, error) {
+func NewListProjectDomainsRequest(server string, project string, params *ListProjectDomainsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2475,6 +2637,45 @@ func NewListProjectDomainsRequest(server string, project string) (*http.Request,
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -2673,7 +2874,7 @@ func NewUpdateProjectDomainRequestWithBody(server string, project string, domain
 }
 
 // NewListProjectFilesRequest generates requests for ListProjectFiles
-func NewListProjectFilesRequest(server string, project string) (*http.Request, error) {
+func NewListProjectFilesRequest(server string, project string, params *ListProjectFilesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2696,6 +2897,45 @@ func NewListProjectFilesRequest(server string, project string) (*http.Request, e
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -2763,7 +3003,7 @@ func NewDeleteProjectFileRequest(server string, project string, path string, par
 }
 
 // NewGetProjectFileRequest generates requests for GetProjectFile
-func NewGetProjectFileRequest(server string, project string, path string) (*http.Request, error) {
+func NewGetProjectFileRequest(server string, project string, path string, params *GetProjectFileParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2793,6 +3033,45 @@ func NewGetProjectFileRequest(server string, project string, path string) (*http
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -2971,7 +3250,7 @@ func NewGetProjectLogsRequest(server string, project string, params *GetProjectL
 }
 
 // NewListProjectRulesRequest generates requests for ListProjectRules
-func NewListProjectRulesRequest(server string, project string) (*http.Request, error) {
+func NewListProjectRulesRequest(server string, project string, params *ListProjectRulesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2994,6 +3273,45 @@ func NewListProjectRulesRequest(server string, project string) (*http.Request, e
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3233,7 +3551,7 @@ func NewUpdateProjectRuleRequestWithBody(server string, project string, rule str
 }
 
 // NewListProjectSQLStatementsRequest generates requests for ListProjectSQLStatements
-func NewListProjectSQLStatementsRequest(server string, project string) (*http.Request, error) {
+func NewListProjectSQLStatementsRequest(server string, project string, params *ListProjectSQLStatementsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3256,6 +3574,45 @@ func NewListProjectSQLStatementsRequest(server string, project string) (*http.Re
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3496,6 +3853,18 @@ func NewGetProjectUsageRequest(server string, project string, params *GetProject
 
 		}
 
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
 		if params.Limit != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
@@ -3523,7 +3892,7 @@ func NewGetProjectUsageRequest(server string, project string, params *GetProject
 }
 
 // NewListProjectVariablesRequest generates requests for ListProjectVariables
-func NewListProjectVariablesRequest(server string, project string) (*http.Request, error) {
+func NewListProjectVariablesRequest(server string, project string, params *ListProjectVariablesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3546,6 +3915,45 @@ func NewListProjectVariablesRequest(server string, project string) (*http.Reques
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3744,7 +4152,7 @@ func NewUpdateProjectVariableRequestWithBody(server string, project string, vari
 }
 
 // NewListRegionsRequest generates requests for ListRegions
-func NewListRegionsRequest(server string) (*http.Request, error) {
+func NewListRegionsRequest(server string, params *ListRegionsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -3760,6 +4168,45 @@ func NewListRegionsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -3832,7 +4279,7 @@ func NewListRuleOptionsRequest(server string) (*http.Request, error) {
 }
 
 // NewListRuntimesRequest generates requests for ListRuntimes
-func NewListRuntimesRequest(server string) (*http.Request, error) {
+func NewListRuntimesRequest(server string, params *ListRuntimesParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -3848,6 +4295,45 @@ func NewListRuntimesRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -4153,7 +4639,7 @@ func NewListMeBillingTransactionsRequest(server string, params *ListMeBillingTra
 }
 
 // NewListMeNotificationsRequest generates requests for ListMeNotifications
-func NewListMeNotificationsRequest(server string) (*http.Request, error) {
+func NewListMeNotificationsRequest(server string, params *ListMeNotificationsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -4169,6 +4655,45 @@ func NewListMeNotificationsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -4502,7 +5027,7 @@ type ClientWithResponsesInterface interface {
 	UpdateProjectWithResponse(ctx context.Context, project string, params *UpdateProjectParams, body UpdateProjectJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectResponse, error)
 
 	// ListProjectBackupsWithResponse request
-	ListProjectBackupsWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectBackupsResponse, error)
+	ListProjectBackupsWithResponse(ctx context.Context, project string, params *ListProjectBackupsParams, reqEditors ...RequestEditorFn) (*ListProjectBackupsResponse, error)
 
 	// CreateProjectBackupWithResponse request
 	CreateProjectBackupWithResponse(ctx context.Context, project string, params *CreateProjectBackupParams, reqEditors ...RequestEditorFn) (*CreateProjectBackupResponse, error)
@@ -4528,7 +5053,7 @@ type ClientWithResponsesInterface interface {
 	DownloadProjectBackupStorageWithResponse(ctx context.Context, project string, backup string, reqEditors ...RequestEditorFn) (*DownloadProjectBackupStorageResponse, error)
 
 	// ListProjectDomainsWithResponse request
-	ListProjectDomainsWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectDomainsResponse, error)
+	ListProjectDomainsWithResponse(ctx context.Context, project string, params *ListProjectDomainsParams, reqEditors ...RequestEditorFn) (*ListProjectDomainsResponse, error)
 
 	// CreateProjectDomainWithBodyWithResponse request with any body
 	CreateProjectDomainWithBodyWithResponse(ctx context.Context, project string, params *CreateProjectDomainParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectDomainResponse, error)
@@ -4544,13 +5069,13 @@ type ClientWithResponsesInterface interface {
 	UpdateProjectDomainWithResponse(ctx context.Context, project string, domain string, params *UpdateProjectDomainParams, body UpdateProjectDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectDomainResponse, error)
 
 	// ListProjectFilesWithResponse request
-	ListProjectFilesWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectFilesResponse, error)
+	ListProjectFilesWithResponse(ctx context.Context, project string, params *ListProjectFilesParams, reqEditors ...RequestEditorFn) (*ListProjectFilesResponse, error)
 
 	// DeleteProjectFileWithResponse request
 	DeleteProjectFileWithResponse(ctx context.Context, project string, path string, params *DeleteProjectFileParams, reqEditors ...RequestEditorFn) (*DeleteProjectFileResponse, error)
 
 	// GetProjectFileWithResponse request
-	GetProjectFileWithResponse(ctx context.Context, project string, path string, reqEditors ...RequestEditorFn) (*GetProjectFileResponse, error)
+	GetProjectFileWithResponse(ctx context.Context, project string, path string, params *GetProjectFileParams, reqEditors ...RequestEditorFn) (*GetProjectFileResponse, error)
 
 	// PutProjectFileWithBodyWithResponse request with any body
 	PutProjectFileWithBodyWithResponse(ctx context.Context, project string, path string, params *PutProjectFileParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PutProjectFileResponse, error)
@@ -4559,7 +5084,7 @@ type ClientWithResponsesInterface interface {
 	GetProjectLogsWithResponse(ctx context.Context, project string, params *GetProjectLogsParams, reqEditors ...RequestEditorFn) (*GetProjectLogsResponse, error)
 
 	// ListProjectRulesWithResponse request
-	ListProjectRulesWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectRulesResponse, error)
+	ListProjectRulesWithResponse(ctx context.Context, project string, params *ListProjectRulesParams, reqEditors ...RequestEditorFn) (*ListProjectRulesResponse, error)
 
 	// CreateProjectRuleWithBodyWithResponse request with any body
 	CreateProjectRuleWithBodyWithResponse(ctx context.Context, project string, params *CreateProjectRuleParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectRuleResponse, error)
@@ -4578,7 +5103,7 @@ type ClientWithResponsesInterface interface {
 	UpdateProjectRuleWithResponse(ctx context.Context, project string, rule string, params *UpdateProjectRuleParams, body UpdateProjectRuleJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectRuleResponse, error)
 
 	// ListProjectSQLStatementsWithResponse request
-	ListProjectSQLStatementsWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectSQLStatementsResponse, error)
+	ListProjectSQLStatementsWithResponse(ctx context.Context, project string, params *ListProjectSQLStatementsParams, reqEditors ...RequestEditorFn) (*ListProjectSQLStatementsResponse, error)
 
 	// RunSQLStatementWithBodyWithResponse request with any body
 	RunSQLStatementWithBodyWithResponse(ctx context.Context, project string, params *RunSQLStatementParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RunSQLStatementResponse, error)
@@ -4595,7 +5120,7 @@ type ClientWithResponsesInterface interface {
 	GetProjectUsageWithResponse(ctx context.Context, project string, params *GetProjectUsageParams, reqEditors ...RequestEditorFn) (*GetProjectUsageResponse, error)
 
 	// ListProjectVariablesWithResponse request
-	ListProjectVariablesWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectVariablesResponse, error)
+	ListProjectVariablesWithResponse(ctx context.Context, project string, params *ListProjectVariablesParams, reqEditors ...RequestEditorFn) (*ListProjectVariablesResponse, error)
 
 	// CreateProjectVariableWithBodyWithResponse request with any body
 	CreateProjectVariableWithBodyWithResponse(ctx context.Context, project string, params *CreateProjectVariableParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateProjectVariableResponse, error)
@@ -4611,7 +5136,7 @@ type ClientWithResponsesInterface interface {
 	UpdateProjectVariableWithResponse(ctx context.Context, project string, variable string, params *UpdateProjectVariableParams, body UpdateProjectVariableJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectVariableResponse, error)
 
 	// ListRegionsWithResponse request
-	ListRegionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListRegionsResponse, error)
+	ListRegionsWithResponse(ctx context.Context, params *ListRegionsParams, reqEditors ...RequestEditorFn) (*ListRegionsResponse, error)
 
 	// GetRegionWithResponse request
 	GetRegionWithResponse(ctx context.Context, region string, reqEditors ...RequestEditorFn) (*GetRegionResponse, error)
@@ -4620,7 +5145,7 @@ type ClientWithResponsesInterface interface {
 	ListRuleOptionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListRuleOptionsResponse, error)
 
 	// ListRuntimesWithResponse request
-	ListRuntimesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListRuntimesResponse, error)
+	ListRuntimesWithResponse(ctx context.Context, params *ListRuntimesParams, reqEditors ...RequestEditorFn) (*ListRuntimesResponse, error)
 
 	// GetRuntimeWithResponse request
 	GetRuntimeWithResponse(ctx context.Context, runtimeid string, reqEditors ...RequestEditorFn) (*GetRuntimeResponse, error)
@@ -4646,7 +5171,7 @@ type ClientWithResponsesInterface interface {
 	ListMeBillingTransactionsWithResponse(ctx context.Context, params *ListMeBillingTransactionsParams, reqEditors ...RequestEditorFn) (*ListMeBillingTransactionsResponse, error)
 
 	// ListMeNotificationsWithResponse request
-	ListMeNotificationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListMeNotificationsResponse, error)
+	ListMeNotificationsWithResponse(ctx context.Context, params *ListMeNotificationsParams, reqEditors ...RequestEditorFn) (*ListMeNotificationsResponse, error)
 
 	// DeleteMeNotificationWithResponse request
 	DeleteMeNotificationWithResponse(ctx context.Context, notification string, params *DeleteMeNotificationParams, reqEditors ...RequestEditorFn) (*DeleteMeNotificationResponse, error)
@@ -6661,8 +7186,8 @@ func (c *ClientWithResponses) UpdateProjectWithResponse(ctx context.Context, pro
 }
 
 // ListProjectBackupsWithResponse request returning *ListProjectBackupsResponse
-func (c *ClientWithResponses) ListProjectBackupsWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectBackupsResponse, error) {
-	rsp, err := c.ListProjectBackups(ctx, project, reqEditors...)
+func (c *ClientWithResponses) ListProjectBackupsWithResponse(ctx context.Context, project string, params *ListProjectBackupsParams, reqEditors ...RequestEditorFn) (*ListProjectBackupsResponse, error) {
+	rsp, err := c.ListProjectBackups(ctx, project, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6741,8 +7266,8 @@ func (c *ClientWithResponses) DownloadProjectBackupStorageWithResponse(ctx conte
 }
 
 // ListProjectDomainsWithResponse request returning *ListProjectDomainsResponse
-func (c *ClientWithResponses) ListProjectDomainsWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectDomainsResponse, error) {
-	rsp, err := c.ListProjectDomains(ctx, project, reqEditors...)
+func (c *ClientWithResponses) ListProjectDomainsWithResponse(ctx context.Context, project string, params *ListProjectDomainsParams, reqEditors ...RequestEditorFn) (*ListProjectDomainsResponse, error) {
+	rsp, err := c.ListProjectDomains(ctx, project, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6793,8 +7318,8 @@ func (c *ClientWithResponses) UpdateProjectDomainWithResponse(ctx context.Contex
 }
 
 // ListProjectFilesWithResponse request returning *ListProjectFilesResponse
-func (c *ClientWithResponses) ListProjectFilesWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectFilesResponse, error) {
-	rsp, err := c.ListProjectFiles(ctx, project, reqEditors...)
+func (c *ClientWithResponses) ListProjectFilesWithResponse(ctx context.Context, project string, params *ListProjectFilesParams, reqEditors ...RequestEditorFn) (*ListProjectFilesResponse, error) {
+	rsp, err := c.ListProjectFiles(ctx, project, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6811,8 +7336,8 @@ func (c *ClientWithResponses) DeleteProjectFileWithResponse(ctx context.Context,
 }
 
 // GetProjectFileWithResponse request returning *GetProjectFileResponse
-func (c *ClientWithResponses) GetProjectFileWithResponse(ctx context.Context, project string, path string, reqEditors ...RequestEditorFn) (*GetProjectFileResponse, error) {
-	rsp, err := c.GetProjectFile(ctx, project, path, reqEditors...)
+func (c *ClientWithResponses) GetProjectFileWithResponse(ctx context.Context, project string, path string, params *GetProjectFileParams, reqEditors ...RequestEditorFn) (*GetProjectFileResponse, error) {
+	rsp, err := c.GetProjectFile(ctx, project, path, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6838,8 +7363,8 @@ func (c *ClientWithResponses) GetProjectLogsWithResponse(ctx context.Context, pr
 }
 
 // ListProjectRulesWithResponse request returning *ListProjectRulesResponse
-func (c *ClientWithResponses) ListProjectRulesWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectRulesResponse, error) {
-	rsp, err := c.ListProjectRules(ctx, project, reqEditors...)
+func (c *ClientWithResponses) ListProjectRulesWithResponse(ctx context.Context, project string, params *ListProjectRulesParams, reqEditors ...RequestEditorFn) (*ListProjectRulesResponse, error) {
+	rsp, err := c.ListProjectRules(ctx, project, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6899,8 +7424,8 @@ func (c *ClientWithResponses) UpdateProjectRuleWithResponse(ctx context.Context,
 }
 
 // ListProjectSQLStatementsWithResponse request returning *ListProjectSQLStatementsResponse
-func (c *ClientWithResponses) ListProjectSQLStatementsWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectSQLStatementsResponse, error) {
-	rsp, err := c.ListProjectSQLStatements(ctx, project, reqEditors...)
+func (c *ClientWithResponses) ListProjectSQLStatementsWithResponse(ctx context.Context, project string, params *ListProjectSQLStatementsParams, reqEditors ...RequestEditorFn) (*ListProjectSQLStatementsResponse, error) {
+	rsp, err := c.ListProjectSQLStatements(ctx, project, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -6952,8 +7477,8 @@ func (c *ClientWithResponses) GetProjectUsageWithResponse(ctx context.Context, p
 }
 
 // ListProjectVariablesWithResponse request returning *ListProjectVariablesResponse
-func (c *ClientWithResponses) ListProjectVariablesWithResponse(ctx context.Context, project string, reqEditors ...RequestEditorFn) (*ListProjectVariablesResponse, error) {
-	rsp, err := c.ListProjectVariables(ctx, project, reqEditors...)
+func (c *ClientWithResponses) ListProjectVariablesWithResponse(ctx context.Context, project string, params *ListProjectVariablesParams, reqEditors ...RequestEditorFn) (*ListProjectVariablesResponse, error) {
+	rsp, err := c.ListProjectVariables(ctx, project, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -7004,8 +7529,8 @@ func (c *ClientWithResponses) UpdateProjectVariableWithResponse(ctx context.Cont
 }
 
 // ListRegionsWithResponse request returning *ListRegionsResponse
-func (c *ClientWithResponses) ListRegionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListRegionsResponse, error) {
-	rsp, err := c.ListRegions(ctx, reqEditors...)
+func (c *ClientWithResponses) ListRegionsWithResponse(ctx context.Context, params *ListRegionsParams, reqEditors ...RequestEditorFn) (*ListRegionsResponse, error) {
+	rsp, err := c.ListRegions(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -7031,8 +7556,8 @@ func (c *ClientWithResponses) ListRuleOptionsWithResponse(ctx context.Context, r
 }
 
 // ListRuntimesWithResponse request returning *ListRuntimesResponse
-func (c *ClientWithResponses) ListRuntimesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListRuntimesResponse, error) {
-	rsp, err := c.ListRuntimes(ctx, reqEditors...)
+func (c *ClientWithResponses) ListRuntimesWithResponse(ctx context.Context, params *ListRuntimesParams, reqEditors ...RequestEditorFn) (*ListRuntimesResponse, error) {
+	rsp, err := c.ListRuntimes(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -7111,8 +7636,8 @@ func (c *ClientWithResponses) ListMeBillingTransactionsWithResponse(ctx context.
 }
 
 // ListMeNotificationsWithResponse request returning *ListMeNotificationsResponse
-func (c *ClientWithResponses) ListMeNotificationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListMeNotificationsResponse, error) {
-	rsp, err := c.ListMeNotifications(ctx, reqEditors...)
+func (c *ClientWithResponses) ListMeNotificationsWithResponse(ctx context.Context, params *ListMeNotificationsParams, reqEditors ...RequestEditorFn) (*ListMeNotificationsResponse, error) {
+	rsp, err := c.ListMeNotifications(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

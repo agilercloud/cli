@@ -2,30 +2,37 @@ package api
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/agilercloud/cli/internal/publicapi"
 )
 
-// ListProjects fetches the caller's projects, optionally scoped to a workspace.
+// ListProjects fetches the caller's projects, optionally scoped to a
+// workspace, following Link rel="next" pagination so callers see all
+// projects.
 func (c *Client) ListProjects(ctx context.Context, workspaceID string) ([]Project, error) {
-	var params *publicapi.ListProjectsParams
-	if id, err := parseOptionalUUID("workspace", workspaceID); err != nil {
-		return nil, err
-	} else if id != nil {
-		params = &publicapi.ListProjectsParams{WorkspaceId: id}
-	}
-
-	resp, err := c.impl.ListProjectsWithResponse(ctx, params)
+	workspaceUUID, err := parseOptionalUUID("workspace", workspaceID)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return *resp.JSON200, nil
+	return paginateAll(func(cursor *string) ([]Project, http.Header, error) {
+		params := &publicapi.ListProjectsParams{Cursor: cursor}
+		if workspaceUUID != nil {
+			params.WorkspaceId = workspaceUUID
+		}
+		resp, err := c.impl.ListProjectsWithResponse(ctx, params)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+			return nil, nil, err
+		}
+		var items []Project
+		if resp.JSON200 != nil {
+			items = *resp.JSON200
+		}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // GetProject fetches one project by ID.

@@ -7,19 +7,23 @@ import (
 	"github.com/agilercloud/cli/internal/publicapi"
 )
 
-// ListBackups returns a project's backup records.
+// ListBackups returns a project's backup records, following Link
+// rel="next" pagination so callers see the full list.
 func (c *Client) ListBackups(ctx context.Context, projectID string) ([]Backup, error) {
-	resp, err := c.impl.ListProjectBackupsWithResponse(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return *resp.JSON200, nil
+	return paginateAll(func(cursor *string) ([]Backup, http.Header, error) {
+		resp, err := c.impl.ListProjectBackupsWithResponse(ctx, projectID, &publicapi.ListProjectBackupsParams{Cursor: cursor})
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+			return nil, nil, err
+		}
+		var items []Backup
+		if resp.JSON200 != nil {
+			items = *resp.JSON200
+		}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // CreateBackup triggers a manual backup.

@@ -49,20 +49,24 @@ func (c *Client) UpdateBilling(ctx context.Context, in UpdateBillingInput) error
 	return checkStatus(resp.StatusCode(), resp.Body)
 }
 
-// ListBillingTransactions returns recent transactions, grouped by month
-// as the server returns them. The CLI is free to flatten for display.
+// ListBillingTransactions returns transactions grouped by month, following
+// Link rel="next" pagination so callers see the full history (the page
+// titled "complete history" in the SPA is otherwise capped at 12 months).
 func (c *Client) ListBillingTransactions(ctx context.Context) ([]BillingMonth, error) {
-	resp, err := c.impl.ListMeBillingTransactionsWithResponse(ctx, &publicapi.ListMeBillingTransactionsParams{})
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
-	return *resp.JSON200, nil
+	return paginateAll(func(cursor *string) ([]BillingMonth, http.Header, error) {
+		resp, err := c.impl.ListMeBillingTransactionsWithResponse(ctx, &publicapi.ListMeBillingTransactionsParams{Cursor: cursor})
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+			return nil, nil, err
+		}
+		var items []BillingMonth
+		if resp.JSON200 != nil {
+			items = *resp.JSON200
+		}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // GetBillingStatement streams the PDF for a billing period (YYYY-MM).
@@ -79,19 +83,23 @@ func (c *Client) GetBillingStatement(ctx context.Context, period string) (*http.
 	return resp, nil
 }
 
-// ListNotifications returns recent notifications for the caller.
+// ListNotifications returns notifications for the caller, following Link
+// rel="next" pagination so callers see the full list.
 func (c *Client) ListNotifications(ctx context.Context) ([]Notification, error) {
-	resp, err := c.impl.ListMeNotificationsWithResponse(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
-	return *resp.JSON200, nil
+	return paginateAll(func(cursor *string) ([]Notification, http.Header, error) {
+		resp, err := c.impl.ListMeNotificationsWithResponse(ctx, &publicapi.ListMeNotificationsParams{Cursor: cursor})
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+			return nil, nil, err
+		}
+		var items []Notification
+		if resp.JSON200 != nil {
+			items = *resp.JSON200
+		}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // DeleteNotification dismisses a notification by ID.

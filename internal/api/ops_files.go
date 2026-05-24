@@ -28,33 +28,40 @@ func EncodeFilePath(p string) string {
 	return strings.Join(segs, "/")
 }
 
-// ListProjectFiles returns the contents of a project directory.
+// ListProjectFiles returns the contents of a project directory, following
+// Link rel="next" pagination so the caller sees the whole directory.
 // An empty remotePath lists the project root.
 func (c *Client) ListProjectFiles(ctx context.Context, projectID, remotePath string) ([]File, error) {
 	if remotePath == "" {
-		resp, err := c.impl.ListProjectFilesWithResponse(ctx, projectID)
+		return paginateAll(func(cursor *string) ([]File, http.Header, error) {
+			resp, err := c.impl.ListProjectFilesWithResponse(ctx, projectID, &publicapi.ListProjectFilesParams{Cursor: cursor})
+			if err != nil {
+				return nil, nil, err
+			}
+			if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+				return nil, nil, err
+			}
+			var items []File
+			if resp.JSON200 != nil {
+				items = *resp.JSON200
+			}
+			return items, resp.HTTPResponse.Header, nil
+		})
+	}
+	return paginateAll(func(cursor *string) ([]File, http.Header, error) {
+		resp, err := c.impl.GetProjectFileWithResponse(ctx, projectID, EncodeFilePath(remotePath), &publicapi.GetProjectFileParams{Cursor: cursor})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if resp.JSON200 == nil {
-			return nil, errEmptyBody
+		var items []File
+		if resp.JSON200 != nil {
+			items = *resp.JSON200
 		}
-		return *resp.JSON200, nil
-	}
-	resp, err := c.impl.GetProjectFileWithResponse(ctx, projectID, EncodeFilePath(remotePath))
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return *resp.JSON200, nil
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // GetProjectFile streams the raw bytes of a project file. The caller

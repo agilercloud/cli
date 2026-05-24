@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/agilercloud/cli/internal/publicapi"
 )
@@ -23,19 +24,23 @@ func (c *Client) ListRuleOptions(ctx context.Context) (*RuleOptions, error) {
 	return resp.JSON200, nil
 }
 
-// ListProjectRules returns all rules attached to a project.
+// ListProjectRules returns all rules attached to a project, following
+// Link rel="next" pagination so callers see the full list.
 func (c *Client) ListProjectRules(ctx context.Context, projectID string) ([]Rule, error) {
-	resp, err := c.impl.ListProjectRulesWithResponse(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, nil
-	}
-	return *resp.JSON200, nil
+	return paginateAll(func(cursor *string) ([]Rule, http.Header, error) {
+		resp, err := c.impl.ListProjectRulesWithResponse(ctx, projectID, &publicapi.ListProjectRulesParams{Cursor: cursor})
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+			return nil, nil, err
+		}
+		var items []Rule
+		if resp.JSON200 != nil {
+			items = *resp.JSON200
+		}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // CreateRule attaches a new rule to a project.

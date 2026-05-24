@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/agilercloud/cli/internal/publicapi"
 )
@@ -51,28 +51,61 @@ func (c *Client) RunSQL(ctx context.Context, projectID string, in CreateSQLState
 	return &SQLExecuteResult{Statement: s, Pending: resp.StatusCode() == http.StatusAccepted}, nil
 }
 
-// ListSQLStatements returns recent statements for a project, newest first.
-// limit ≤ 0 leaves the page size at the server default.
+// ListSQLStatements returns recent statements for a project, newest
+// first. limit caps the total entries returned and is paginated across
+// Link rel="next" pages as needed (limit ≤ 0 returns the full history).
+//
+// The /sql/statements response is typed as a freeform JSON object in
+// the spec (it's proxied from the edge runtime) but the wire shape is
+// actually an array — so we drop down to the raw HTTP client to read
+// the body bytes directly and decode into the typed slice.
 func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit int) ([]SQLStatement, error) {
-	var editors []publicapi.RequestEditorFn
-	if limit > 0 {
-		editors = append(editors, withQueryParam("limit", strconv.Itoa(limit)))
+	var all []SQLStatement
+	seen := map[string]struct{}{}
+	var cursor *string
+	for {
+		params := &publicapi.ListProjectSQLStatementsParams{Cursor: cursor}
+		if limit > 0 {
+			remaining := limit - len(all)
+			if remaining <= 0 {
+				return all, nil
+			}
+			pageSize := remaining
+			params.Limit = &pageSize
+		}
+		httpResp, err := c.impl.ListProjectSQLStatements(ctx, projectID, params)
+		if err != nil {
+			return nil, err
+		}
+		body, readErr := io.ReadAll(httpResp.Body)
+		_ = httpResp.Body.Close()
+		if readErr != nil {
+			return nil, readErr
+		}
+		if err := checkStatus(httpResp.StatusCode, body); err != nil {
+			return nil, err
+		}
+		if len(body) > 0 {
+			var page []SQLStatement
+			if err := json.Unmarshal(body, &page); err != nil {
+				return nil, err
+			}
+			all = append(all, page...)
+		}
+		if limit > 0 && len(all) >= limit {
+			return all[:limit], nil
+		}
+		next := nextCursorFromHeaders(httpResp.Header)
+		if next == "" {
+			return all, nil
+		}
+		if _, ok := seen[next]; ok {
+			return all, nil
+		}
+		seen[next] = struct{}{}
+		nextCopy := next
+		cursor = &nextCopy
 	}
-	resp, err := c.impl.ListProjectSQLStatementsWithResponse(ctx, projectID, editors...)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if len(resp.Body) == 0 {
-		return nil, nil
-	}
-	var list []SQLStatement
-	if err := json.Unmarshal(resp.Body, &list); err != nil {
-		return nil, err
-	}
-	return list, nil
 }
 
 // GetSQLStatement returns one statement by ID (including any rows page).
@@ -102,14 +135,3 @@ func (c *Client) DeleteSQLStatement(ctx context.Context, projectID, statementID 
 	return checkStatus(resp.StatusCode(), resp.Body)
 }
 
-// withQueryParam appends a query string parameter to the outgoing
-// request. Used for endpoints whose query params aren't fully modeled
-// on the generated Params struct (e.g. SQL history "limit").
-func withQueryParam(key, value string) publicapi.RequestEditorFn {
-	return func(_ context.Context, req *http.Request) error {
-		q := req.URL.Query()
-		q.Set(key, value)
-		req.URL.RawQuery = q.Encode()
-		return nil
-	}
-}

@@ -4,21 +4,28 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+
+	"github.com/agilercloud/cli/internal/publicapi"
 )
 
-// ListRegions returns the catalog of runtime regions.
+// ListRegions returns the catalog of runtime regions, following Link
+// rel="next" pagination so callers see the full catalog.
 func (c *Client) ListRegions(ctx context.Context) ([]Region, error) {
-	resp, err := c.impl.ListRegionsWithResponse(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return *resp.JSON200, nil
+	return paginateAll(func(cursor *string) ([]Region, http.Header, error) {
+		resp, err := c.impl.ListRegionsWithResponse(ctx, &publicapi.ListRegionsParams{Cursor: cursor})
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+			return nil, nil, err
+		}
+		var items []Region
+		if resp.JSON200 != nil {
+			items = *resp.JSON200
+		}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // GetRegion returns a single region by ID.
@@ -36,19 +43,23 @@ func (c *Client) GetRegion(ctx context.Context, regionID string) (*Region, error
 	return resp.JSON200, nil
 }
 
-// ListRuntimes returns the catalog of runtime images.
+// ListRuntimes returns the catalog of runtime images, following Link
+// rel="next" pagination so callers see the full catalog.
 func (c *Client) ListRuntimes(ctx context.Context) ([]Runtime, error) {
-	resp, err := c.impl.ListRuntimesWithResponse(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return *resp.JSON200, nil
+	return paginateAll(func(cursor *string) ([]Runtime, http.Header, error) {
+		resp, err := c.impl.ListRuntimesWithResponse(ctx, &publicapi.ListRuntimesParams{Cursor: cursor})
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+			return nil, nil, err
+		}
+		var items []Runtime
+		if resp.JSON200 != nil {
+			items = *resp.JSON200
+		}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // GetRuntime returns a single runtime by ID.
