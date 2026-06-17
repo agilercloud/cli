@@ -81,6 +81,7 @@ func NewRootCmd(a *app.App) *cobra.Command {
 
 	add("project-ops", newLogsCmd(a))
 	add("project-ops", newSQLCmd(a))
+	add("project-ops", newWPCmd(a))
 	add("project-ops", newFilesCmd(a))
 	add("project-ops", newBackupsCmd(a))
 	add("project-ops", newVariablesCmd(a))

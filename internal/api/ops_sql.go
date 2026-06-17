@@ -122,4 +122,3 @@ func (c *Client) DeleteSQLStatement(ctx context.Context, projectID, statementID 
 	}
 	return checkStatus(resp.StatusCode(), resp.Body)
 }
-

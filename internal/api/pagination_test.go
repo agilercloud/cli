@@ -119,6 +119,61 @@ func TestListSQLStatementsRespectsLimit(t *testing.T) {
 	}
 }
 
+func TestListWPCommandsRespectsLimit(t *testing.T) {
+	// Pages of one item each. With limit=2, the loop should stop after
+	// pulling exactly two items even though the server keeps offering
+	// more via Link rel="next".
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Link", `</v1/projects/proj/wp/commands?cursor=more>; rel="next"`)
+		_, _ = w.Write([]byte(`[{"id":"00000000-0000-0000-0000-00000000000` + itoa(calls) + `","status":"success","submitted_at":"2025-01-01T00:00:00Z","command_preview":"plugin list"}]`))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key", Options{})
+	got, err := client.ListWPCommands(context.Background(), "proj", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d items, want 2", len(got))
+	}
+	if got[0].CommandPreview != "plugin list" {
+		t.Fatalf("command_preview = %q, want %q", got[0].CommandPreview, "plugin list")
+	}
+}
+
+func TestListWPCommandsWithoutLimitStopsAtFirstPage(t *testing.T) {
+	// With limit<=0 the client takes a single page at the server's default
+	// size instead of crawling the entire history, even though the server
+	// keeps offering more via Link rel="next".
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.Query().Get("limit") != "" {
+			t.Errorf("limit param sent on unbounded list: %q", r.URL.Query().Get("limit"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Link", `</v1/projects/proj/wp/commands?cursor=more>; rel="next"`)
+		_, _ = w.Write([]byte(`[{"id":"00000000-0000-0000-0000-000000000001","status":"success","submitted_at":"2025-01-01T00:00:00Z","command_preview":"plugin list"}]`))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key", Options{})
+	got, err := client.ListWPCommands(context.Background(), "proj", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("server calls = %d, want 1", calls)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d items, want 1", len(got))
+	}
+}
+
 // itoa returns the decimal text of n (n in [1..9] is enough for these
 // tests; avoids pulling strconv just for a one-character formatter).
 func itoa(n int) string {
