@@ -45,10 +45,10 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "execute [query]",
 		Short: "Execute a SQL statement against a project database",
-		Long:  "Execute a SQL statement against the configured project's database. The statement can be passed as an argument or piped via stdin. Use --read-only to wrap execution in a read-only transaction. Use --async to submit without blocking; the command then polls until the statement leaves the pending state or --poll-timeout elapses.",
+		Long:  "Execute a SQL statement against the configured project's database. The statement can be passed as an argument or piped via stdin. Use --read-only to wrap execution in a read-only transaction. By default the command waits (by polling) until the statement completes or --poll-timeout elapses; use --async to submit and return immediately with the statement id.",
 		Example: `  agiler sql execute "select count(*) from users"
   agiler sql execute --read-only --timeout 30 "select * from orders limit 10"
-  echo "vacuum analyze" | agiler sql execute --async`,
+  echo "optimize table wp_posts" | agiler sql execute --async`,
 		Args: cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
@@ -64,12 +64,20 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 				in.Timeout = &timeout
 			}
 
-			res, err := a.API.RunSQL(cmd.Context(), projectID, in, async)
+			// Always submit with Prefer: respond-async and poll for the
+			// result. A synchronous submit holds the HTTP response open for
+			// the whole execution, which the client transport caps at 30s
+			// (ResponseHeaderTimeout) — far less than the 180s a statement
+			// may legitimately run. --async only controls whether we wait.
+			res, err := a.API.RunSQL(cmd.Context(), projectID, in, true)
 			if err != nil {
 				return err
 			}
 
 			result := res.Statement
+			if async {
+				return renderSQLStatement(a, result, res.Pending)
+			}
 			if res.Pending {
 				final, err := pollUntilDone(cmd.Context(), a, projectID, result.ID, pollInterval, pollTimeout)
 				if err != nil {
@@ -77,14 +85,14 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 				}
 				result = final
 			}
-			return renderSQLStatement(a, result, async && res.Pending)
+			return renderSQLStatement(a, result, false)
 		},
 	}
 	cmd.Flags().BoolVar(&readOnly, "read-only", false, "Wrap execution in a read-only transaction")
 	cmd.Flags().IntVar(&timeout, "timeout", 0, "Per-statement timeout in seconds (server-side)")
-	cmd.Flags().BoolVar(&async, "async", false, "Send Prefer: respond-async; poll until complete")
-	cmd.Flags().DurationVar(&pollInterval, "poll-interval", time.Second, "Poll interval when waiting for async SQL completion")
-	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 10*time.Minute, "Maximum wait when --async polls for completion")
+	cmd.Flags().BoolVar(&async, "async", false, "Submit without waiting; prints the pending statement for later `agiler sql get`")
+	cmd.Flags().DurationVar(&pollInterval, "poll-interval", time.Second, "Poll interval while waiting for SQL completion")
+	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 10*time.Minute, "Maximum wait for SQL completion")
 	return cmd
 }
 
@@ -111,29 +119,35 @@ func newSQLHistoryCmd(a *app.App) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum entries returned (0 = server default, max 200)")
+	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum entries returned (0 = single page at server default; max 200)")
 	return cmd
 }
 
 func newSQLGetCmd(a *app.App) *cobra.Command {
-	return &cobra.Command{
-		Use:     "get <statement>",
-		Short:   "Fetch one SQL execution by id (with paginated rows)",
-		Long:    "Fetch a single SQL execution by id, including its full SQL text, row counts, error (if any), and a paginated slice of returned rows.",
-		Example: `  agiler sql get 01HXY...`,
-		Args:    cobra.ExactArgs(1),
+	var limit int
+	var cursor string
+	cmd := &cobra.Command{
+		Use:   "get <statement>",
+		Short: "Fetch one SQL execution by id (with paginated rows)",
+		Long:  "Fetch a single SQL execution by id, including its full SQL text, row counts, error (if any), and a page of returned rows. When more rows remain, the rendered result ends with the `--cursor` invocation that fetches the next page.",
+		Example: `  agiler sql get 01HXY...
+  agiler sql get 01HXY... --limit 1000`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := requireProjectID(a)
 			if err != nil {
 				return err
 			}
-			result, err := a.API.GetSQLStatement(cmd.Context(), projectID, args[0])
+			result, err := a.API.GetSQLStatement(cmd.Context(), projectID, args[0], limit, cursor)
 			if err != nil {
 				return err
 			}
 			return renderSQLStatement(a, *result, false)
 		},
 	}
+	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum result rows returned (0 = server default of 100, max 1000)")
+	cmd.Flags().StringVar(&cursor, "cursor", "", "Resume rows from a previous page's cursor")
+	return cmd
 }
 
 func newSQLDeleteCmd(a *app.App) *cobra.Command {
@@ -172,12 +186,14 @@ func readSQLQuery(a *app.App, args []string) (string, error) {
 
 // pollUntilDone polls GET /sql/statements/{id} on the given interval until
 // status leaves "pending" or timeout elapses. Returns the final statement;
-// the caller decides how to render it.
+// the caller decides how to render it. Each poll requests the maximum rows
+// page — free while the statement is pending (no rows exist yet) and it
+// makes the final poll return the largest first page in one go.
 func pollUntilDone(ctx context.Context, a *app.App, projectID, stmtID string, interval, timeout time.Duration) (api.SQLStatement, error) {
 	deadline := time.Now().Add(timeout)
 
 	for {
-		s, err := a.API.GetSQLStatement(ctx, projectID, stmtID)
+		s, err := a.API.GetSQLStatement(ctx, projectID, stmtID, api.MaxSQLRowsPageSize, "")
 		if err != nil {
 			return api.SQLStatement{}, err
 		}
@@ -234,6 +250,9 @@ func renderSQLStatement(a *app.App, s api.SQLStatement, asyncHint bool) error {
 	}
 	if len(s.Rows) > 0 {
 		renderRowsTable(a, s.Columns, s.Rows)
+	}
+	if s.NextCursor != "" {
+		a.Output.Text("(more rows: agiler sql get %s --cursor %s)", s.ID, s.NextCursor)
 	}
 	return nil
 }

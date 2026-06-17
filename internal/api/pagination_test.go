@@ -119,6 +119,35 @@ func TestListSQLStatementsRespectsLimit(t *testing.T) {
 	}
 }
 
+func TestListSQLStatementsWithoutLimitStopsAtFirstPage(t *testing.T) {
+	// With limit<=0 the client takes a single page at the server's default
+	// size instead of crawling the entire history, even though the server
+	// keeps offering more via Link rel="next".
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.Query().Get("limit") != "" {
+			t.Errorf("limit param sent on unbounded list: %q", r.URL.Query().Get("limit"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Link", `</v1/projects/proj/sql/statements?cursor=more>; rel="next"`)
+		_, _ = w.Write([]byte(`[{"id":"00000000-0000-0000-0000-000000000001","status":"success","submitted_at":"2025-01-01T00:00:00Z","sql_preview":"SELECT 1"}]`))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key", Options{})
+	got, err := client.ListSQLStatements(context.Background(), "proj", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 1 {
+		t.Fatalf("server calls = %d, want 1", calls)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d items, want 1", len(got))
+	}
+}
+
 func TestListWPCommandsRespectsLimit(t *testing.T) {
 	// Pages of one item each. With limit=2, the loop should stop after
 	// pulling exactly two items even though the server keeps offering

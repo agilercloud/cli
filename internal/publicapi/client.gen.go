@@ -720,6 +720,15 @@ type DeleteProjectSQLStatementParams struct {
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
 }
 
+// GetProjectSQLStatementParams defines parameters for GetProjectSQLStatement.
+type GetProjectSQLStatementParams struct {
+	// Cursor Cursor for the next page of result rows (opaque; obtained from the previous response's Link rel="next").
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// Limit Maximum number of result rows to return (default 100, max 1000).
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
 // GetProjectUsageParams defines parameters for GetProjectUsage.
 type GetProjectUsageParams struct {
 	// Since RFC 3339 lower bound on the time window.
@@ -1077,7 +1086,7 @@ type ClientInterface interface {
 	DeleteProjectSQLStatement(ctx context.Context, project string, statement string, params *DeleteProjectSQLStatementParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectSQLStatement request
-	GetProjectSQLStatement(ctx context.Context, project string, statement string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetProjectSQLStatement(ctx context.Context, project string, statement string, params *GetProjectSQLStatementParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetProjectUsage request
 	GetProjectUsage(ctx context.Context, project string, params *GetProjectUsageParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1630,8 +1639,8 @@ func (c *Client) DeleteProjectSQLStatement(ctx context.Context, project string, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetProjectSQLStatement(ctx context.Context, project string, statement string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetProjectSQLStatementRequest(c.Server, project, statement)
+func (c *Client) GetProjectSQLStatement(ctx context.Context, project string, statement string, params *GetProjectSQLStatementParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetProjectSQLStatementRequest(c.Server, project, statement, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3884,7 +3893,7 @@ func NewDeleteProjectSQLStatementRequest(server string, project string, statemen
 }
 
 // NewGetProjectSQLStatementRequest generates requests for GetProjectSQLStatement
-func NewGetProjectSQLStatementRequest(server string, project string, statement string) (*http.Request, error) {
+func NewGetProjectSQLStatementRequest(server string, project string, statement string, params *GetProjectSQLStatementParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -3914,6 +3923,45 @@ func NewGetProjectSQLStatementRequest(server string, project string, statement s
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if params.Cursor != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "cursor", *params.Cursor, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if params.Limit != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "limit", *params.Limit, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else {
+				for _, qp := range strings.Split(queryFrag, "&") {
+					rawQueryFragments = append(rawQueryFragments, qp)
+				}
+			}
+
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
 	}
 
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
@@ -5527,7 +5575,7 @@ type ClientWithResponsesInterface interface {
 	DeleteProjectSQLStatementWithResponse(ctx context.Context, project string, statement string, params *DeleteProjectSQLStatementParams, reqEditors ...RequestEditorFn) (*DeleteProjectSQLStatementResponse, error)
 
 	// GetProjectSQLStatementWithResponse request
-	GetProjectSQLStatementWithResponse(ctx context.Context, project string, statement string, reqEditors ...RequestEditorFn) (*GetProjectSQLStatementResponse, error)
+	GetProjectSQLStatementWithResponse(ctx context.Context, project string, statement string, params *GetProjectSQLStatementParams, reqEditors ...RequestEditorFn) (*GetProjectSQLStatementResponse, error)
 
 	// GetProjectUsageWithResponse request
 	GetProjectUsageWithResponse(ctx context.Context, project string, params *GetProjectUsageParams, reqEditors ...RequestEditorFn) (*GetProjectUsageResponse, error)
@@ -8105,8 +8153,8 @@ func (c *ClientWithResponses) DeleteProjectSQLStatementWithResponse(ctx context.
 }
 
 // GetProjectSQLStatementWithResponse request returning *GetProjectSQLStatementResponse
-func (c *ClientWithResponses) GetProjectSQLStatementWithResponse(ctx context.Context, project string, statement string, reqEditors ...RequestEditorFn) (*GetProjectSQLStatementResponse, error) {
-	rsp, err := c.GetProjectSQLStatement(ctx, project, statement, reqEditors...)
+func (c *ClientWithResponses) GetProjectSQLStatementWithResponse(ctx context.Context, project string, statement string, params *GetProjectSQLStatementParams, reqEditors ...RequestEditorFn) (*GetProjectSQLStatementResponse, error) {
+	rsp, err := c.GetProjectSQLStatement(ctx, project, statement, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

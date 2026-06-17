@@ -50,12 +50,21 @@ func (c *Client) RunSQL(ctx context.Context, projectID string, in CreateSQLState
 	return &SQLExecuteResult{Statement: s, Pending: resp.StatusCode() == http.StatusAccepted}, nil
 }
 
+// maxSQLListPageSize is the server's maximum `limit` for the statement list
+// endpoint; larger caller limits are fetched in pages of this size (the
+// server rejects bigger values with a 400 rather than clamping).
+const maxSQLListPageSize = 200
+
+// MaxSQLRowsPageSize is the server's maximum `limit` for result rows on the
+// single-statement GET (the default page is 100 rows).
+const MaxSQLRowsPageSize = 1000
+
 // ListSQLStatements returns recent statements for a project, newest
 // first. Each item is the slim list projection (id, status, submitted_at,
 // duration_ms, sql_preview); call GetSQLStatement to fetch the full
 // entity including rows. limit caps the total entries returned and is
-// paginated across Link rel="next" pages as needed (limit ≤ 0 returns
-// the full history).
+// paginated across Link rel="next" pages as needed; limit ≤ 0 returns a
+// single page at the server's default size.
 func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit int) ([]SQLStatementListItem, error) {
 	var all []SQLStatementListItem
 	seen := map[string]struct{}{}
@@ -68,6 +77,9 @@ func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit 
 				return all, nil
 			}
 			pageSize := remaining
+			if pageSize > maxSQLListPageSize {
+				pageSize = maxSQLListPageSize
+			}
 			params.Limit = &pageSize
 		}
 		resp, err := c.impl.ListProjectSQLStatementsWithResponse(ctx, projectID, params)
@@ -80,7 +92,12 @@ func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit 
 		if resp.JSON200 != nil {
 			all = append(all, *resp.JSON200...)
 		}
-		if limit > 0 && len(all) >= limit {
+		if limit <= 0 {
+			// No explicit cap: stop at the server's default page rather
+			// than crawling the entire history.
+			return all, nil
+		}
+		if len(all) >= limit {
 			return all[:limit], nil
 		}
 		next := nextCursorFromHeaders(resp.HTTPResponse.Header)
@@ -96,9 +113,19 @@ func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit 
 	}
 }
 
-// GetSQLStatement returns one statement by ID (including any rows page).
-func (c *Client) GetSQLStatement(ctx context.Context, projectID, statementID string) (*SQLStatement, error) {
-	resp, err := c.impl.GetProjectSQLStatementWithResponse(ctx, projectID, statementID)
+// GetSQLStatement returns one statement by ID with a page of result rows.
+// limit caps the returned rows (0 = server default of 100, max
+// MaxSQLRowsPageSize); cursor resumes from a previous page's NextCursor.
+// The result's NextCursor is set when more rows remain.
+func (c *Client) GetSQLStatement(ctx context.Context, projectID, statementID string, limit int, cursor string) (*SQLStatement, error) {
+	params := &publicapi.GetProjectSQLStatementParams{}
+	if limit > 0 {
+		params.Limit = &limit
+	}
+	if cursor != "" {
+		params.Cursor = &cursor
+	}
+	resp, err := c.impl.GetProjectSQLStatementWithResponse(ctx, projectID, statementID, params)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +136,7 @@ func (c *Client) GetSQLStatement(ctx context.Context, projectID, statementID str
 	if err := json.Unmarshal(resp.Body, &s); err != nil {
 		return nil, err
 	}
+	s.NextCursor = nextCursorFromHeaders(resp.HTTPResponse.Header)
 	return &s, nil
 }
 

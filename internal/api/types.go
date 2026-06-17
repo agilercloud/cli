@@ -98,6 +98,11 @@ type SQLStatement struct {
 	Columns      []string `json:"columns"`
 	Rows         [][]any  `json:"rows"`
 	Error        *string  `json:"error"`
+
+	// NextCursor pages the remaining result rows when Rows was truncated.
+	// Parsed from the response's Link rel="next" header, not the body;
+	// empty when this page is the last.
+	NextCursor string `json:"next_cursor,omitempty"`
 }
 
 // WPCommand is the CLI's view of a wp-cli command execution. The public
