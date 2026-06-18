@@ -1,10 +1,7 @@
 package cli
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"strings"
 	"time"
 
 	"github.com/agilercloud/cli/internal/api"
@@ -53,7 +50,7 @@ func newWPExecuteCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			command, err := readWPCommand(a, args)
+			command, err := readArgOrStdin(a, args, "command")
 			if err != nil {
 				return err
 			}
@@ -77,11 +74,15 @@ func newWPExecuteCmd(a *app.App) *cobra.Command {
 				return renderWPCommand(a, result, res.Pending)
 			}
 			if res.Pending {
-				final, err := pollWPUntilDone(cmd.Context(), a, projectID, result.ID, pollInterval, pollTimeout)
+				final, err := pollUntilComplete(cmd.Context(), pollInterval, pollTimeout, "wp-cli command",
+					func() (*api.WPCommand, error) {
+						return a.API.GetWPCommand(cmd.Context(), projectID, result.ID, api.MaxWPOutputPageSize, "")
+					},
+					func(w *api.WPCommand) string { return w.Status })
 				if err != nil {
 					return err
 				}
-				result = final
+				result = *final
 			}
 			return renderWPCommand(a, result, false)
 		},
@@ -163,48 +164,6 @@ func newWPDeleteCmd(a *app.App) *cobra.Command {
 			a.Output.Text("Command deleted.")
 			return nil
 		},
-	}
-}
-
-func readWPCommand(a *app.App, args []string) (string, error) {
-	if len(args) == 1 {
-		return args[0], nil
-	}
-	data, err := io.ReadAll(a.In)
-	if err != nil {
-		return "", fmt.Errorf("read stdin: %w", err)
-	}
-	command := strings.TrimSpace(string(data))
-	if command == "" {
-		return "", fmt.Errorf("no command provided")
-	}
-	return command, nil
-}
-
-// pollWPUntilDone polls GET /wp/commands/{id} on the given interval until
-// status leaves "pending" or timeout elapses. Returns the final command;
-// the caller decides how to render it. Each poll requests the maximum
-// output page — free while the command is pending (no output exists yet)
-// and it makes the final poll return the largest first page in one go.
-func pollWPUntilDone(ctx context.Context, a *app.App, projectID, cmdID string, interval, timeout time.Duration) (api.WPCommand, error) {
-	deadline := time.Now().Add(timeout)
-
-	for {
-		w, err := a.API.GetWPCommand(ctx, projectID, cmdID, api.MaxWPOutputPageSize, "")
-		if err != nil {
-			return api.WPCommand{}, err
-		}
-		if w.Status != "pending" {
-			return *w, nil
-		}
-		if time.Now().After(deadline) {
-			return *w, fmt.Errorf("timed out waiting for wp-cli command to complete")
-		}
-		select {
-		case <-ctx.Done():
-			return *w, ctx.Err()
-		case <-time.After(interval):
-		}
 	}
 }
 

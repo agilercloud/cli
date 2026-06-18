@@ -40,20 +40,12 @@ func (c *Client) RunWPCommand(ctx context.Context, projectID string, in CreateWP
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+	w, err := decodeChecked[WPCommand](resp.StatusCode(), resp.Body)
+	if err != nil {
 		return nil, err
 	}
-	var w WPCommand
-	if err := json.Unmarshal(resp.Body, &w); err != nil {
-		return nil, err
-	}
-	return &WPExecuteResult{Command: w, Pending: resp.StatusCode() == http.StatusAccepted}, nil
+	return &WPExecuteResult{Command: *w, Pending: resp.StatusCode() == http.StatusAccepted}, nil
 }
-
-// maxWPListPageSize is the server's maximum `limit` for the wp commands
-// list endpoint; larger caller limits are fetched in pages of this size
-// (the server rejects bigger values with a 400 rather than clamping).
-const maxWPListPageSize = 200
 
 // MaxWPOutputPageSize is the server's maximum `limit` for output lines on
 // the single-command GET (the default page is 100 lines).
@@ -66,51 +58,20 @@ const MaxWPOutputPageSize = 1000
 // and is paginated across Link rel="next" pages as needed; limit ≤ 0
 // returns a single page at the server's default size.
 func (c *Client) ListWPCommands(ctx context.Context, projectID string, limit int) ([]WPCommandListItem, error) {
-	var all []WPCommandListItem
-	seen := map[string]struct{}{}
-	var cursor *string
-	for {
-		params := &publicapi.ListWPCommandsParams{Cursor: cursor}
-		if limit > 0 {
-			remaining := limit - len(all)
-			if remaining <= 0 {
-				return all, nil
-			}
-			pageSize := remaining
-			if pageSize > maxWPListPageSize {
-				pageSize = maxWPListPageSize
-			}
-			params.Limit = &pageSize
-		}
-		resp, err := c.impl.ListWPCommandsWithResponse(ctx, projectID, params)
+	return paginateLimited(limit, func(cursor *string, pageSize *int) ([]WPCommandListItem, http.Header, error) {
+		resp, err := c.impl.ListWPCommandsWithResponse(ctx, projectID, &publicapi.ListWPCommandsParams{Cursor: cursor, Limit: pageSize})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		var items []WPCommandListItem
 		if resp.JSON200 != nil {
-			all = append(all, *resp.JSON200...)
+			items = *resp.JSON200
 		}
-		if limit <= 0 {
-			// No explicit cap: stop at the server's default page rather
-			// than crawling the entire history.
-			return all, nil
-		}
-		if len(all) >= limit {
-			return all[:limit], nil
-		}
-		next := nextCursorFromHeaders(resp.HTTPResponse.Header)
-		if next == "" {
-			return all, nil
-		}
-		if _, ok := seen[next]; ok {
-			return all, nil
-		}
-		seen[next] = struct{}{}
-		nextCopy := next
-		cursor = &nextCopy
-	}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // GetWPCommand returns one wp-cli command by ID with a page of output
@@ -129,15 +90,12 @@ func (c *Client) GetWPCommand(ctx context.Context, projectID, commandID string, 
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	var w WPCommand
-	if err := json.Unmarshal(resp.Body, &w); err != nil {
+	w, err := decodeChecked[WPCommand](resp.StatusCode(), resp.Body)
+	if err != nil {
 		return nil, err
 	}
 	w.NextCursor = nextCursorFromHeaders(resp.HTTPResponse.Header)
-	return &w, nil
+	return w, nil
 }
 
 // DeleteWPCommand removes a command (cancels it if it's pending).

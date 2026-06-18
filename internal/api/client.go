@@ -145,6 +145,20 @@ func checkStatus(statusCode int, body []byte) error {
 	return apiErr
 }
 
+// decodeChecked applies checkStatus to a buffered response and, on success,
+// unmarshals the body into a fresh T. Shared by the run/get operations whose
+// public-spec responses are typed as freeform objects and re-decoded here.
+func decodeChecked[T any](statusCode int, body []byte) (*T, error) {
+	if err := checkStatus(statusCode, body); err != nil {
+		return nil, err
+	}
+	var v T
+	if err := json.Unmarshal(body, &v); err != nil {
+		return nil, err
+	}
+	return &v, nil
+}
+
 // decodeErrorFromHTTPResponse reads and parses an error from a streaming
 // *http.Response. The response body is consumed and closed. Returns nil
 // if the status code is 2xx.

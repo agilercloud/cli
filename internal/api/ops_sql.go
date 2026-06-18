@@ -40,20 +40,12 @@ func (c *Client) RunSQL(ctx context.Context, projectID string, in CreateSQLState
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+	s, err := decodeChecked[SQLStatement](resp.StatusCode(), resp.Body)
+	if err != nil {
 		return nil, err
 	}
-	var s SQLStatement
-	if err := json.Unmarshal(resp.Body, &s); err != nil {
-		return nil, err
-	}
-	return &SQLExecuteResult{Statement: s, Pending: resp.StatusCode() == http.StatusAccepted}, nil
+	return &SQLExecuteResult{Statement: *s, Pending: resp.StatusCode() == http.StatusAccepted}, nil
 }
-
-// maxSQLListPageSize is the server's maximum `limit` for the statement list
-// endpoint; larger caller limits are fetched in pages of this size (the
-// server rejects bigger values with a 400 rather than clamping).
-const maxSQLListPageSize = 200
 
 // MaxSQLRowsPageSize is the server's maximum `limit` for result rows on the
 // single-statement GET (the default page is 100 rows).
@@ -66,51 +58,20 @@ const MaxSQLRowsPageSize = 1000
 // paginated across Link rel="next" pages as needed; limit ≤ 0 returns a
 // single page at the server's default size.
 func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit int) ([]SQLStatementListItem, error) {
-	var all []SQLStatementListItem
-	seen := map[string]struct{}{}
-	var cursor *string
-	for {
-		params := &publicapi.ListProjectSQLStatementsParams{Cursor: cursor}
-		if limit > 0 {
-			remaining := limit - len(all)
-			if remaining <= 0 {
-				return all, nil
-			}
-			pageSize := remaining
-			if pageSize > maxSQLListPageSize {
-				pageSize = maxSQLListPageSize
-			}
-			params.Limit = &pageSize
-		}
-		resp, err := c.impl.ListProjectSQLStatementsWithResponse(ctx, projectID, params)
+	return paginateLimited(limit, func(cursor *string, pageSize *int) ([]SQLStatementListItem, http.Header, error) {
+		resp, err := c.impl.ListProjectSQLStatementsWithResponse(ctx, projectID, &publicapi.ListProjectSQLStatementsParams{Cursor: cursor, Limit: pageSize})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+		var items []SQLStatementListItem
 		if resp.JSON200 != nil {
-			all = append(all, *resp.JSON200...)
+			items = *resp.JSON200
 		}
-		if limit <= 0 {
-			// No explicit cap: stop at the server's default page rather
-			// than crawling the entire history.
-			return all, nil
-		}
-		if len(all) >= limit {
-			return all[:limit], nil
-		}
-		next := nextCursorFromHeaders(resp.HTTPResponse.Header)
-		if next == "" {
-			return all, nil
-		}
-		if _, ok := seen[next]; ok {
-			return all, nil
-		}
-		seen[next] = struct{}{}
-		nextCopy := next
-		cursor = &nextCopy
-	}
+		return items, resp.HTTPResponse.Header, nil
+	})
 }
 
 // GetSQLStatement returns one statement by ID with a page of result rows.
@@ -129,15 +90,12 @@ func (c *Client) GetSQLStatement(ctx context.Context, projectID, statementID str
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	var s SQLStatement
-	if err := json.Unmarshal(resp.Body, &s); err != nil {
+	s, err := decodeChecked[SQLStatement](resp.StatusCode(), resp.Body)
+	if err != nil {
 		return nil, err
 	}
 	s.NextCursor = nextCursorFromHeaders(resp.HTTPResponse.Header)
-	return &s, nil
+	return s, nil
 }
 
 // DeleteSQLStatement removes a statement (cancels SQL if it's pending).

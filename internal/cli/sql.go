@@ -1,10 +1,8 @@
 package cli
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
@@ -55,7 +53,7 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			query, err := readSQLQuery(a, args)
+			query, err := readArgOrStdin(a, args, "query")
 			if err != nil {
 				return err
 			}
@@ -79,11 +77,15 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 				return renderSQLStatement(a, result, res.Pending)
 			}
 			if res.Pending {
-				final, err := pollUntilDone(cmd.Context(), a, projectID, result.ID, pollInterval, pollTimeout)
+				final, err := pollUntilComplete(cmd.Context(), pollInterval, pollTimeout, "SQL statement",
+					func() (*api.SQLStatement, error) {
+						return a.API.GetSQLStatement(cmd.Context(), projectID, result.ID, api.MaxSQLRowsPageSize, "")
+					},
+					func(s *api.SQLStatement) string { return s.Status })
 				if err != nil {
 					return err
 				}
-				result = final
+				result = *final
 			}
 			return renderSQLStatement(a, result, false)
 		},
@@ -166,48 +168,6 @@ func newSQLDeleteCmd(a *app.App) *cobra.Command {
 			a.Output.Text("Statement deleted.")
 			return nil
 		},
-	}
-}
-
-func readSQLQuery(a *app.App, args []string) (string, error) {
-	if len(args) == 1 {
-		return args[0], nil
-	}
-	data, err := io.ReadAll(a.In)
-	if err != nil {
-		return "", fmt.Errorf("read stdin: %w", err)
-	}
-	query := strings.TrimSpace(string(data))
-	if query == "" {
-		return "", fmt.Errorf("no query provided")
-	}
-	return query, nil
-}
-
-// pollUntilDone polls GET /sql/statements/{id} on the given interval until
-// status leaves "pending" or timeout elapses. Returns the final statement;
-// the caller decides how to render it. Each poll requests the maximum rows
-// page — free while the statement is pending (no rows exist yet) and it
-// makes the final poll return the largest first page in one go.
-func pollUntilDone(ctx context.Context, a *app.App, projectID, stmtID string, interval, timeout time.Duration) (api.SQLStatement, error) {
-	deadline := time.Now().Add(timeout)
-
-	for {
-		s, err := a.API.GetSQLStatement(ctx, projectID, stmtID, api.MaxSQLRowsPageSize, "")
-		if err != nil {
-			return api.SQLStatement{}, err
-		}
-		if s.Status != "pending" {
-			return *s, nil
-		}
-		if time.Now().After(deadline) {
-			return *s, fmt.Errorf("timed out waiting for SQL statement to complete")
-		}
-		select {
-		case <-ctx.Done():
-			return *s, ctx.Err()
-		case <-time.After(interval):
-		}
 	}
 }
 
