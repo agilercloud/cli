@@ -84,7 +84,10 @@ func newWPExecuteCmd(a *app.App) *cobra.Command {
 				}
 				result = *final
 			}
-			return renderWPCommand(a, result, false)
+			if err := renderWPCommand(a, result, false); err != nil {
+				return err
+			}
+			return wpCommandExecutionError(result)
 		},
 	}
 	cmd.Flags().IntVar(&timeout, "timeout", 0, "Per-command timeout in seconds (server-side)")
@@ -92,6 +95,16 @@ func newWPExecuteCmd(a *app.App) *cobra.Command {
 	cmd.Flags().DurationVar(&pollInterval, "poll-interval", time.Second, "Poll interval while waiting for wp-cli completion")
 	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 10*time.Minute, "Maximum wait for wp-cli completion")
 	return cmd
+}
+
+func wpCommandExecutionError(w api.WPCommand) error {
+	if w.Status != "error" {
+		return nil
+	}
+	if w.ExitCode != nil {
+		return fmt.Errorf("wp-cli command failed with exit code %d", *w.ExitCode)
+	}
+	return fmt.Errorf("wp-cli command failed")
 }
 
 func newWPHistoryCmd(a *app.App) *cobra.Command {
