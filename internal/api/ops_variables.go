@@ -34,13 +34,7 @@ func (c *Client) CreateVariable(ctx context.Context, projectID string, in Create
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON201 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON201, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON201)
 }
 
 // UpdateVariable patches an existing variable (e.g. rotate value) and
@@ -52,13 +46,7 @@ func (c *Client) UpdateVariable(ctx context.Context, projectID, variableID strin
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // DeleteVariable removes a variable.

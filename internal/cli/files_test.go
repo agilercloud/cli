@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 )
@@ -204,4 +206,57 @@ func TestFilesUploadOverwriteClearsIfNoneMatch(t *testing.T) {
 
 func writeFileForTest(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0o644)
+}
+
+func TestDownloadSingleFilePreservesDestinationOnStreamFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "64")
+		_, _ = w.Write([]byte("partial"))
+	}))
+	t.Cleanup(server.Close)
+
+	destination := filepath.Join(t.TempDir(), "existing.txt")
+	if err := os.WriteFile(destination, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	client := api.NewClient(server.URL, "test-key", api.Options{})
+	if err := downloadSingleFile(context.Background(), client, "proj-1", "remote.txt", destination); err == nil {
+		t.Fatal("expected interrupted download to fail")
+	}
+	got, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "original" {
+		t.Fatalf("destination = %q, want original content", got)
+	}
+}
+
+func TestDownloadSingleFileCreatesParentsAndAppliesLastModified(t *testing.T) {
+	modified := time.Date(2026, 7, 20, 10, 30, 0, 0, time.UTC)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Last-Modified", modified.Format(http.TimeFormat))
+		_, _ = w.Write([]byte("complete"))
+	}))
+	t.Cleanup(server.Close)
+
+	destination := filepath.Join(t.TempDir(), "new", "nested", "file.txt")
+	client := api.NewClient(server.URL, "test-key", api.Options{})
+	if err := downloadSingleFile(context.Background(), client, "proj-1", "remote.txt", destination); err != nil {
+		t.Fatalf("downloadSingleFile: %v", err)
+	}
+	got, err := os.ReadFile(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "complete" {
+		t.Fatalf("destination = %q, want complete", got)
+	}
+	info, err := os.Stat(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.ModTime().Equal(modified) {
+		t.Fatalf("mtime = %v, want %v", info.ModTime(), modified)
+	}
 }

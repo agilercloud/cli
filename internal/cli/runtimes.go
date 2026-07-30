@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"time"
 
 	"github.com/agilercloud/cli/internal/api"
@@ -10,40 +11,23 @@ import (
 )
 
 func newRuntimesCmd(a *app.App) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "runtimes",
-		Aliases: []string{"runtime"},
-		Short:   "List available runtimes",
-	}
-
-	cmd.AddCommand(&cobra.Command{
-		Use:   "list",
-		Short: "List all runtimes",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.ListRuntimes(cmd.Context())
-			if err != nil {
-				return err
-			}
-			renderRuntimesList(a.Output, result)
-			return nil
+	return newLookupCommand(lookupCommandOptions[api.Runtime]{
+		Use:       "runtimes",
+		Aliases:   []string{"runtime"},
+		Short:     "List available runtimes",
+		ListShort: "List all runtimes",
+		GetUse:    "get <runtime-id>",
+		GetShort:  "Get runtime details",
+		Complete:  completeRuntimeIDs(a),
+		List: func(ctx context.Context) ([]api.Runtime, error) {
+			return a.API.ListRuntimes(ctx)
 		},
-	})
-
-	cmd.AddCommand(&cobra.Command{
-		Use:               "get <runtime-id>",
-		Short:             "Get runtime details",
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeRuntimeIDs(a),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.GetRuntime(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return renderRuntimeDetail(a.Output, *result)
+		Get: func(ctx context.Context, runtimeID string) (*api.Runtime, error) {
+			return a.API.GetRuntime(ctx, runtimeID)
 		},
+		RenderList: func(runtimes []api.Runtime) { renderRuntimesList(a.Output, runtimes) },
+		RenderGet:  func(runtime api.Runtime) error { return renderRuntimeDetail(a.Output, runtime) },
 	})
-
-	return cmd
 }
 
 func renderRuntimesList(w *output.Writer, rs []api.Runtime) {

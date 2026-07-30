@@ -1,10 +1,8 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"net/http"
+	"io"
 
 	"github.com/agilercloud/cli/internal/publicapi"
 )
@@ -26,25 +24,17 @@ type WPExecuteResult struct {
 // WPCommand here.
 func (c *Client) RunWPCommand(ctx context.Context, projectID string, in CreateWPCommand, async bool) (*WPExecuteResult, error) {
 	params := &publicapi.CreateWPCommandParams{IdempotencyKey: idempotencyKey()}
-	data, err := json.Marshal(in)
+	command, pending, err := submitCommand[CreateWPCommand, WPCommand](in, async, func(body io.Reader, editors ...publicapi.RequestEditorFn) (commandResponse, error) {
+		resp, err := c.impl.CreateWPCommandWithBodyWithResponse(ctx, projectID, params, "application/json", body, editors...)
+		if err != nil {
+			return commandResponse{}, err
+		}
+		return commandResponse{status: resp.StatusCode(), body: resp.Body, headers: resp.HTTPResponse.Header}, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	editors := []publicapi.RequestEditorFn{}
-	if async {
-		editors = append(editors, withHeaders(map[string]string{"Prefer": "respond-async"}))
-	}
-	resp, err := c.impl.CreateWPCommandWithBodyWithResponse(
-		ctx, projectID, params, "application/json", bytes.NewReader(data), editors...,
-	)
-	if err != nil {
-		return nil, err
-	}
-	w, err := decodeChecked[WPCommand](resp.StatusCode(), resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return &WPExecuteResult{Command: *w, Pending: resp.StatusCode() == http.StatusAccepted}, nil
+	return &WPExecuteResult{Command: *command, Pending: pending}, nil
 }
 
 // MaxWPOutputPageSize is the server's maximum `limit` for output lines on
@@ -58,19 +48,12 @@ const MaxWPOutputPageSize = 1000
 // and is paginated across Link rel="next" pages as needed; limit ≤ 0
 // returns a single page at the server's default size.
 func (c *Client) ListWPCommands(ctx context.Context, projectID string, limit int) ([]WPCommandListItem, error) {
-	return paginateLimited(limit, func(cursor *string, pageSize *int) ([]WPCommandListItem, http.Header, error) {
+	return paginateCommandHistory(limit, func(cursor *string, pageSize *int) (commandResponse, *[]WPCommandListItem, error) {
 		resp, err := c.impl.ListWPCommandsWithResponse(ctx, projectID, &publicapi.ListWPCommandsParams{Cursor: cursor, Limit: pageSize})
 		if err != nil {
-			return nil, nil, err
+			return commandResponse{}, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []WPCommandListItem
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return commandResponse{status: resp.StatusCode(), body: resp.Body, headers: resp.HTTPResponse.Header}, resp.JSON200, nil
 	})
 }
 
@@ -79,32 +62,24 @@ func (c *Client) ListWPCommands(ctx context.Context, projectID string, limit int
 // MaxWPOutputPageSize); cursor resumes from a previous page's NextCursor.
 // The result's NextCursor is set when more output remains.
 func (c *Client) GetWPCommand(ctx context.Context, projectID, commandID string, limit int, cursor string) (*WPCommand, error) {
-	params := &publicapi.GetWPCommandParams{}
-	if limit > 0 {
-		params.Limit = &limit
-	}
-	if cursor != "" {
-		params.Cursor = &cursor
-	}
-	resp, err := c.impl.GetWPCommandWithResponse(ctx, projectID, commandID, params)
-	if err != nil {
-		return nil, err
-	}
-	w, err := decodeChecked[WPCommand](resp.StatusCode(), resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	w.NextCursor = nextCursorFromHeaders(resp.HTTPResponse.Header)
-	return w, nil
+	return getCommandResult(limit, cursor, func(limit *int, cursor *string) (commandResponse, error) {
+		resp, err := c.impl.GetWPCommandWithResponse(ctx, projectID, commandID, &publicapi.GetWPCommandParams{Limit: limit, Cursor: cursor})
+		if err != nil {
+			return commandResponse{}, err
+		}
+		return commandResponse{status: resp.StatusCode(), body: resp.Body, headers: resp.HTTPResponse.Header}, nil
+	}, func(command *WPCommand, next string) {
+		command.NextCursor = next
+	})
 }
 
 // DeleteWPCommand removes a command (cancels it if it's pending).
 func (c *Client) DeleteWPCommand(ctx context.Context, projectID, commandID string) error {
-	resp, err := c.impl.DeleteWPCommandWithResponse(
-		ctx, projectID, commandID, &publicapi.DeleteWPCommandParams{},
-	)
-	if err != nil {
-		return err
-	}
-	return checkStatus(resp.StatusCode(), resp.Body)
+	return deleteCommand(func() (commandResponse, error) {
+		resp, err := c.impl.DeleteWPCommandWithResponse(ctx, projectID, commandID, &publicapi.DeleteWPCommandParams{})
+		if err != nil {
+			return commandResponse{}, err
+		}
+		return commandResponse{status: resp.StatusCode(), body: resp.Body}, nil
+	})
 }

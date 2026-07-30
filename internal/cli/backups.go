@@ -1,9 +1,9 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -133,7 +133,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "Download the database dump from a backup",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runBackupDownload(cmd, a, args, api.BackupDatabase)
+			return runBackupDownloadCommand(cmd, a, args[0], api.BackupDatabase)
 		},
 	}
 	dlDB.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
@@ -144,7 +144,7 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 		Short: "Download the object-storage snapshot from a backup",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runBackupDownload(cmd, a, args, api.BackupStorage)
+			return runBackupDownloadCommand(cmd, a, args[0], api.BackupStorage)
 		},
 	}
 	dlStorage.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
@@ -247,20 +247,39 @@ func renderBackupPolicy(w *output.Writer, p api.BackupPolicy) {
 	w.Text("Retention: %d days", p.RetentionDays)
 }
 
-func runBackupDownload(cmd *cobra.Command, a *app.App, args []string, kind api.BackupArtifact) error {
+// BackupDownloadOptions contains the parsed values for one artifact download.
+type BackupDownloadOptions struct {
+	ProjectID    string
+	BackupID     string
+	Kind         api.BackupArtifact
+	OutputPath   string
+	ShowProgress bool
+}
+
+func runBackupDownloadCommand(cmd *cobra.Command, a *app.App, backupID string, kind api.BackupArtifact) error {
 	projectID, err := requireProjectID(a)
 	if err != nil {
 		return err
 	}
 	outputPath, _ := cmd.Flags().GetString("output")
 	showProgress, _ := cmd.Flags().GetBool("progress")
-	resp, err := a.API.DownloadBackup(cmd.Context(), projectID, args[0], kind)
+	return runBackupDownload(cmd.Context(), a, BackupDownloadOptions{
+		ProjectID:    projectID,
+		BackupID:     backupID,
+		Kind:         kind,
+		OutputPath:   outputPath,
+		ShowProgress: showProgress,
+	})
+}
+
+func runBackupDownload(ctx context.Context, a *app.App, opts BackupDownloadOptions) error {
+	resp, err := a.API.DownloadBackup(ctx, opts.ProjectID, opts.BackupID, opts.Kind)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if outputPath == "" || outputPath == "-" {
+	if opts.OutputPath == "" || opts.OutputPath == "-" {
 		if _, err := io.Copy(a.Out, resp.Body); err != nil {
 			return fmt.Errorf("write file: %w", err)
 		}
@@ -269,12 +288,12 @@ func runBackupDownload(cmd *cobra.Command, a *app.App, args []string, kind api.B
 
 	body := io.Reader(resp.Body)
 	var prog *output.ProgressReader
-	if showProgress && a.Output.ErrColor.Enabled() {
-		prog = output.NewProgressReader(resp.Body, a.Err, filepath.Base(outputPath), resp.ContentLength, a.Output.ErrColor)
+	if opts.ShowProgress && a.Output.ErrColor.Enabled() {
+		prog = output.NewProgressReader(resp.Body, a.Err, filepath.Base(opts.OutputPath), resp.ContentLength, a.Output.ErrColor)
 		body = prog
 	}
 
-	n, err := writeStreamAtomic(outputPath, body)
+	n, err := writeStreamAtomic(opts.OutputPath, body)
 	if prog != nil {
 		prog.Finish(err == nil)
 	}
@@ -282,39 +301,7 @@ func runBackupDownload(cmd *cobra.Command, a *app.App, args []string, kind api.B
 		return err
 	}
 	if prog == nil {
-		a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
+		a.Output.Stderr("Downloaded %d bytes to %s", n, opts.OutputPath)
 	}
 	return nil
-}
-
-// writeStreamAtomic copies src into a sibling temp file of outputPath
-// and renames it on success, leaving the existing file at outputPath
-// untouched if the copy fails mid-stream. Returns the number of bytes
-// written.
-func writeStreamAtomic(outputPath string, src io.Reader) (int64, error) {
-	tmp, err := os.CreateTemp(filepath.Dir(outputPath), ".agiler-download-*")
-	if err != nil {
-		return 0, fmt.Errorf("create temp file: %w", err)
-	}
-	tmpPath := tmp.Name()
-	cleanup := true
-	defer func() {
-		_ = tmp.Close()
-		if cleanup {
-			_ = os.Remove(tmpPath)
-		}
-	}()
-
-	n, err := io.Copy(tmp, src)
-	if err != nil {
-		return n, fmt.Errorf("write file: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return n, fmt.Errorf("close temp: %w", err)
-	}
-	if err := os.Rename(tmpPath, outputPath); err != nil {
-		return n, fmt.Errorf("finalize: %w", err)
-	}
-	cleanup = false
-	return n, nil
 }

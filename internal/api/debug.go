@@ -32,7 +32,7 @@ func (d *debugTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	d.dumpRequest(req)
 	resp, err := d.base.RoundTrip(req)
 	if err != nil {
-		fmt.Fprintf(d.w, "< (transport error: %v)\n\n", err)
+		_, _ = fmt.Fprintf(d.w, "< (transport error: %v)\n\n", err)
 		return resp, err
 	}
 	d.dumpResponse(resp)
@@ -45,17 +45,17 @@ func (d *debugTransport) dumpRequest(req *http.Request) {
 	if proto == "" {
 		proto = "HTTP/1.1"
 	}
-	fmt.Fprintf(d.w, "> %s %s %s\n", req.Method, reqURI, proto)
+	_, _ = fmt.Fprintf(d.w, "> %s %s %s\n", req.Method, reqURI, proto)
 	if req.Host != "" {
-		fmt.Fprintf(d.w, "> Host: %s\n", req.Host)
+		_, _ = fmt.Fprintf(d.w, "> Host: %s\n", req.Host)
 	} else if req.URL.Host != "" {
-		fmt.Fprintf(d.w, "> Host: %s\n", req.URL.Host)
+		_, _ = fmt.Fprintf(d.w, "> Host: %s\n", req.URL.Host)
 	}
 	writeHeaders(d.w, "> ", req.Header)
 
 	body, restored, err := drainBody(req.Body)
 	if err != nil {
-		fmt.Fprintf(d.w, "> (error reading body: %v)\n\n", err)
+		_, _ = fmt.Fprintf(d.w, "> (error reading body: %v)\n\n", err)
 		return
 	}
 	if restored != nil {
@@ -69,12 +69,12 @@ func (d *debugTransport) dumpResponse(resp *http.Response) {
 	if proto == "" {
 		proto = "HTTP/1.1"
 	}
-	fmt.Fprintf(d.w, "< %s %s\n", proto, resp.Status)
+	_, _ = fmt.Fprintf(d.w, "< %s %s\n", proto, resp.Status)
 	writeHeaders(d.w, "< ", resp.Header)
 
 	body, restored, err := drainBody(resp.Body)
 	if err != nil {
-		fmt.Fprintf(d.w, "< (error reading body: %v)\n\n", err)
+		_, _ = fmt.Fprintf(d.w, "< (error reading body: %v)\n\n", err)
 		return
 	}
 	if restored != nil {
@@ -93,10 +93,10 @@ func writeHeaders(w io.Writer, p string, h http.Header) {
 	sort.Strings(keys)
 	for _, k := range keys {
 		for _, v := range h[k] {
-			fmt.Fprintf(w, "%s%s: %s\n", p, k, redactHeader(k, v))
+			_, _ = fmt.Fprintf(w, "%s%s: %s\n", p, k, redactHeader(k, v))
 		}
 	}
-	fmt.Fprintf(w, "%s\n", strings.TrimRight(p, " "))
+	_, _ = fmt.Fprintf(w, "%s\n", strings.TrimRight(p, " "))
 }
 
 // redactHeader masks sensitive header values. For Authorization, a Bearer
@@ -124,7 +124,7 @@ func redactHeader(name, value string) string {
 // dumped verbatim up to debugBodyCap; non-JSON bodies are summarized.
 func writeBody(w io.Writer, p, contentType string, body []byte) {
 	if len(body) == 0 {
-		fmt.Fprintf(w, "%s(no body)\n\n", p)
+		_, _ = fmt.Fprintf(w, "%s(no body)\n\n", p)
 		return
 	}
 	if !isPrintableTextContentType(contentType) {
@@ -132,24 +132,24 @@ func writeBody(w io.Writer, p, contentType string, body []byte) {
 		if ct == "" {
 			ct = "unknown content-type"
 		}
-		fmt.Fprintf(w, "%s(%d bytes of %s)\n\n", p, len(body), ct)
+		_, _ = fmt.Fprintf(w, "%s(%d bytes of %s)\n\n", p, len(body), ct)
 		return
 	}
 	if len(body) > debugBodyCap {
-		w.Write([]byte(p))
-		w.Write(body[:debugBodyCap])
+		_, _ = w.Write([]byte(p))
+		_, _ = w.Write(body[:debugBodyCap])
 		if !bytes.HasSuffix(body[:debugBodyCap], []byte("\n")) {
-			fmt.Fprintln(w)
+			_, _ = fmt.Fprintln(w)
 		}
-		fmt.Fprintf(w, "%s... (%d bytes elided)\n\n", p, len(body)-debugBodyCap)
+		_, _ = fmt.Fprintf(w, "%s... (%d bytes elided)\n\n", p, len(body)-debugBodyCap)
 		return
 	}
-	w.Write([]byte(p))
-	w.Write(body)
+	_, _ = w.Write([]byte(p))
+	_, _ = w.Write(body)
 	if !bytes.HasSuffix(body, []byte("\n")) {
-		fmt.Fprintln(w)
+		_, _ = fmt.Fprintln(w)
 	}
-	fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w)
 }
 
 // isPrintableTextContentType reports whether a body of this Content-Type

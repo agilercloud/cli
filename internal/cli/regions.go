@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"time"
 
 	"github.com/agilercloud/cli/internal/api"
@@ -10,40 +11,23 @@ import (
 )
 
 func newRegionsCmd(a *app.App) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "regions",
-		Aliases: []string{"region"},
-		Short:   "List available regions",
-	}
-
-	cmd.AddCommand(&cobra.Command{
-		Use:   "list",
-		Short: "List all regions",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.ListRegions(cmd.Context())
-			if err != nil {
-				return err
-			}
-			renderRegionsList(a.Output, result)
-			return nil
+	return newLookupCommand(lookupCommandOptions[api.Region]{
+		Use:       "regions",
+		Aliases:   []string{"region"},
+		Short:     "List available regions",
+		ListShort: "List all regions",
+		GetUse:    "get <region-id>",
+		GetShort:  "Get region details",
+		Complete:  completeRegionIDs(a),
+		List: func(ctx context.Context) ([]api.Region, error) {
+			return a.API.ListRegions(ctx)
 		},
-	})
-
-	cmd.AddCommand(&cobra.Command{
-		Use:               "get <region-id>",
-		Short:             "Get region details",
-		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeRegionIDs(a),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := a.API.GetRegion(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return renderRegionDetail(a.Output, *result)
+		Get: func(ctx context.Context, regionID string) (*api.Region, error) {
+			return a.API.GetRegion(ctx, regionID)
 		},
+		RenderList: func(regions []api.Region) { renderRegionsList(a.Output, regions) },
+		RenderGet:  func(region api.Region) error { return renderRegionDetail(a.Output, region) },
 	})
-
-	return cmd
 }
 
 func renderRegionsList(w *output.Writer, rs []api.Region) {

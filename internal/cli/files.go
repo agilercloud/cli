@@ -165,65 +165,83 @@ func newFilesUploadCmd(a *app.App) *cobra.Command {
   agiler files upload /static ./public`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
 			projectID, err := requireProjectID(a)
 			if err != nil {
 				return err
 			}
-			remotePath := args[0]
-			localPath := args[1]
 			force, _ := cmd.Flags().GetBool("force")
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
 			showProgress, _ := cmd.Flags().GetBool("progress")
-
-			fi, err := os.Stat(localPath)
-			if err != nil {
-				return fmt.Errorf("stat local path: %w", err)
-			}
-
-			if fi.IsDir() {
-				stats := &syncStats{}
-				if err := uploadDir(ctx, a, projectID, remotePath, localPath, force, overwrite, stats); err != nil {
-					return err
-				}
-				stats.print(a.Output)
-				return nil
-			}
-
-			if !force {
-				parentDir := remoteParentDir(remotePath)
-				remoteEntries, err := a.API.ListProjectFiles(ctx, projectID, parentDir)
-				if err == nil {
-					baseName := path.Base(remotePath)
-					for _, re := range remoteEntries {
-						if re.Name == baseName && !re.IsDir {
-							if shouldSkip(a.FS, localPath, re.Size, re.ModifiedAt) {
-								a.Output.Stderr("skip (unchanged)")
-								return nil
-							}
-							break
-						}
-					}
-				}
-			}
-
-			var prog *progressOptions
-			if showProgress && a.Output.ErrColor.Enabled() {
-				prog = &progressOptions{w: a.Err, color: a.Output.ErrColor}
-			}
-			if err := uploadSingleFile(ctx, a.API, projectID, remotePath, localPath, overwrite, prog); err != nil {
-				return err
-			}
-			if prog == nil {
-				a.Output.Text("File uploaded.")
-			}
-			return nil
+			return runFilesUpload(cmd.Context(), a, FilesUploadOptions{
+				ProjectID:    projectID,
+				RemotePath:   args[0],
+				LocalPath:    args[1],
+				Force:        force,
+				Overwrite:    overwrite,
+				ShowProgress: showProgress,
+			})
 		},
 	}
 	cmd.Flags().BoolP("force", "f", false, "Force transfer even if file is unchanged")
 	cmd.Flags().Bool("overwrite", false, "Overwrite the remote destination if it already exists (default: fail with 412 if exists)")
 	cmd.Flags().Bool("progress", false, "Show a streaming progress indicator on stderr (single-file uploads only)")
 	return cmd
+}
+
+// FilesUploadOptions contains the parsed inputs for a file or directory
+// upload. The runner owns filesystem inspection, skip checks, and transfer.
+type FilesUploadOptions struct {
+	ProjectID    string
+	RemotePath   string
+	LocalPath    string
+	Force        bool
+	Overwrite    bool
+	ShowProgress bool
+}
+
+func runFilesUpload(ctx context.Context, a *app.App, opts FilesUploadOptions) error {
+	fi, err := os.Stat(opts.LocalPath)
+	if err != nil {
+		return fmt.Errorf("stat local path: %w", err)
+	}
+
+	if fi.IsDir() {
+		stats := &syncStats{}
+		if err := uploadDir(ctx, a, opts.ProjectID, opts.RemotePath, opts.LocalPath, opts.Force, opts.Overwrite, stats); err != nil {
+			return err
+		}
+		stats.print(a.Output)
+		return nil
+	}
+
+	if !opts.Force {
+		parentDir := remoteParentDir(opts.RemotePath)
+		remoteEntries, err := a.API.ListProjectFiles(ctx, opts.ProjectID, parentDir)
+		if err == nil {
+			baseName := path.Base(opts.RemotePath)
+			for _, remoteEntry := range remoteEntries {
+				if remoteEntry.Name == baseName && !remoteEntry.IsDir {
+					if shouldSkip(a.FS, opts.LocalPath, remoteEntry.Size, remoteEntry.ModifiedAt) {
+						a.Output.Stderr("skip (unchanged)")
+						return nil
+					}
+					break
+				}
+			}
+		}
+	}
+
+	var prog *progressOptions
+	if opts.ShowProgress && a.Output.ErrColor.Enabled() {
+		prog = &progressOptions{w: a.Err, color: a.Output.ErrColor}
+	}
+	if err := uploadSingleFile(ctx, a.API, opts.ProjectID, opts.RemotePath, opts.LocalPath, opts.Overwrite, prog); err != nil {
+		return err
+	}
+	if prog == nil {
+		a.Output.Text("File uploaded.")
+	}
+	return nil
 }
 
 // --- Download ---
@@ -243,19 +261,6 @@ func downloadSingleFileWithProgress(ctx context.Context, client *api.Client, pro
 		return fmt.Errorf("create parent directory: %w", err)
 	}
 
-	tmp, err := os.CreateTemp(filepath.Dir(localPath), ".agiler-download-*")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
-	}
-	tmpPath := tmp.Name()
-	cleanup := true
-	defer func() {
-		_ = tmp.Close()
-		if cleanup {
-			_ = os.Remove(tmpPath)
-		}
-	}()
-
 	body := io.Reader(resp.Body)
 	var pr *output.ProgressReader
 	if prog != nil {
@@ -263,18 +268,7 @@ func downloadSingleFileWithProgress(ctx context.Context, client *api.Client, pro
 		body = pr
 	}
 
-	copyErr := func() error {
-		if _, err := io.Copy(tmp, body); err != nil {
-			return fmt.Errorf("write file: %w", err)
-		}
-		if err := tmp.Close(); err != nil {
-			return fmt.Errorf("close temp: %w", err)
-		}
-		if err := os.Rename(tmpPath, localPath); err != nil {
-			return fmt.Errorf("finalize: %w", err)
-		}
-		return nil
-	}()
+	_, copyErr := writeStreamAtomic(localPath, body)
 
 	if pr != nil {
 		pr.Finish(copyErr == nil)
@@ -282,7 +276,6 @@ func downloadSingleFileWithProgress(ctx context.Context, client *api.Client, pro
 	if copyErr != nil {
 		return copyErr
 	}
-	cleanup = false
 
 	if lastMod := resp.Header.Get("Last-Modified"); lastMod != "" {
 		if t, err := http.ParseTime(lastMod); err == nil {
@@ -345,75 +338,92 @@ func newFilesGetCmd(a *app.App) *cobra.Command {
   agiler files get /static -o ./public`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
 			projectID, err := requireProjectID(a)
 			if err != nil {
 				return err
 			}
-			remotePath := args[0]
 			outputPath, _ := cmd.Flags().GetString("output")
 			force, _ := cmd.Flags().GetBool("force")
 			showProgress, _ := cmd.Flags().GetBool("progress")
-
-			entries, listErr := a.API.ListProjectFiles(ctx, projectID, remotePath)
-			isDir := listErr == nil && entries != nil
-
-			if isDir {
-				if outputPath == "" || outputPath == "-" {
-					return fmt.Errorf("cannot download directory to stdout; use -o to specify output directory")
-				}
-				stats := &syncStats{}
-				if err := downloadDir(ctx, a, projectID, remotePath, outputPath, force, stats); err != nil {
-					return err
-				}
-				stats.print(a.Output)
-				return nil
-			}
-
-			if outputPath == "" || outputPath == "-" {
-				resp, err := a.API.GetProjectFile(ctx, projectID, remotePath)
-				if err != nil {
-					return err
-				}
-				defer func() { _ = resp.Body.Close() }()
-				_, err = io.Copy(a.Out, resp.Body)
-				return err
-			}
-
-			if !force {
-				parentDir := remoteParentDir(remotePath)
-				remoteEntries, err := a.API.ListProjectFiles(ctx, projectID, parentDir)
-				if err == nil {
-					baseName := path.Base(remotePath)
-					for _, re := range remoteEntries {
-						if re.Name == baseName && !re.IsDir {
-							if shouldSkip(a.FS, outputPath, re.Size, re.ModifiedAt) {
-								a.Output.Stderr("skip (unchanged)")
-								return nil
-							}
-							break
-						}
-					}
-				}
-			}
-
-			var prog *progressOptions
-			if showProgress && a.Output.ErrColor.Enabled() {
-				prog = &progressOptions{w: a.Err, color: a.Output.ErrColor}
-			}
-			if err := downloadSingleFileWithProgress(ctx, a.API, projectID, remotePath, outputPath, prog); err != nil {
-				return err
-			}
-			if prog == nil {
-				a.Output.Stderr("Downloaded to %s", outputPath)
-			}
-			return nil
+			return runFilesGet(cmd.Context(), a, FilesGetOptions{
+				ProjectID:    projectID,
+				RemotePath:   args[0],
+				OutputPath:   outputPath,
+				Force:        force,
+				ShowProgress: showProgress,
+			})
 		},
 	}
 	cmd.Flags().StringP("output", "o", "", "Output file or directory path (default: stdout)")
 	cmd.Flags().BoolP("force", "f", false, "Force transfer even if file is unchanged")
 	cmd.Flags().Bool("progress", false, "Show a streaming progress indicator on stderr (single-file downloads only)")
 	return cmd
+}
+
+// FilesGetOptions contains the parsed inputs for a file or directory
+// download. The runner owns remote probing, skip checks, and streaming.
+type FilesGetOptions struct {
+	ProjectID    string
+	RemotePath   string
+	OutputPath   string
+	Force        bool
+	ShowProgress bool
+}
+
+func runFilesGet(ctx context.Context, a *app.App, opts FilesGetOptions) error {
+	entries, listErr := a.API.ListProjectFiles(ctx, opts.ProjectID, opts.RemotePath)
+	isDir := listErr == nil && entries != nil
+
+	if isDir {
+		if opts.OutputPath == "" || opts.OutputPath == "-" {
+			return fmt.Errorf("cannot download directory to stdout; use -o to specify output directory")
+		}
+		stats := &syncStats{}
+		if err := downloadDir(ctx, a, opts.ProjectID, opts.RemotePath, opts.OutputPath, opts.Force, stats); err != nil {
+			return err
+		}
+		stats.print(a.Output)
+		return nil
+	}
+
+	if opts.OutputPath == "" || opts.OutputPath == "-" {
+		resp, err := a.API.GetProjectFile(ctx, opts.ProjectID, opts.RemotePath)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = resp.Body.Close() }()
+		_, err = io.Copy(a.Out, resp.Body)
+		return err
+	}
+
+	if !opts.Force {
+		parentDir := remoteParentDir(opts.RemotePath)
+		remoteEntries, err := a.API.ListProjectFiles(ctx, opts.ProjectID, parentDir)
+		if err == nil {
+			baseName := path.Base(opts.RemotePath)
+			for _, remoteEntry := range remoteEntries {
+				if remoteEntry.Name == baseName && !remoteEntry.IsDir {
+					if shouldSkip(a.FS, opts.OutputPath, remoteEntry.Size, remoteEntry.ModifiedAt) {
+						a.Output.Stderr("skip (unchanged)")
+						return nil
+					}
+					break
+				}
+			}
+		}
+	}
+
+	var prog *progressOptions
+	if opts.ShowProgress && a.Output.ErrColor.Enabled() {
+		prog = &progressOptions{w: a.Err, color: a.Output.ErrColor}
+	}
+	if err := downloadSingleFileWithProgress(ctx, a.API, opts.ProjectID, opts.RemotePath, opts.OutputPath, prog); err != nil {
+		return err
+	}
+	if prog == nil {
+		a.Output.Stderr("Downloaded to %s", opts.OutputPath)
+	}
+	return nil
 }
 
 // --- List ---

@@ -159,6 +159,18 @@ func decodeChecked[T any](statusCode int, body []byte) (*T, error) {
 	return &v, nil
 }
 
+// requireJSONResponse checks a generated buffered response and requires its
+// typed success body. It is the common 200/201 response path for CRUD methods.
+func requireJSONResponse[T any](statusCode int, body []byte, value *T) (*T, error) {
+	if err := checkStatus(statusCode, body); err != nil {
+		return nil, err
+	}
+	if value == nil {
+		return nil, errEmptyBody
+	}
+	return value, nil
+}
+
 // decodeErrorFromHTTPResponse reads and parses an error from a streaming
 // *http.Response. The response body is consumed and closed. Returns nil
 // if the status code is 2xx.

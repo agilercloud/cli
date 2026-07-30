@@ -11,8 +11,8 @@ func TestNewColorForceOff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.Close()
-	defer w.Close()
+	defer func() { _ = r.Close() }()
+	defer func() { _ = w.Close() }()
 	c := NewColor(w, true)
 	if c.Enabled() {
 		t.Errorf("forceOff=true should yield disabled color")
@@ -31,8 +31,8 @@ func TestNewColorPipeNotTTY(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.Close()
-	defer w.Close()
+	defer func() { _ = r.Close() }()
+	defer func() { _ = w.Close() }()
 	c := NewColor(w, false)
 	if c.Enabled() {
 		t.Errorf("os.Pipe write end is not a TTY; color should be disabled")

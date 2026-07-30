@@ -1,12 +1,17 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/agilercloud/cli/internal/api"
 )
 
 // failingReader emits some bytes, then errors. Simulates a mid-stream
@@ -113,3 +118,38 @@ func TestWriteStreamAtomicCreatesNewFile(t *testing.T) {
 
 // Compile-time check that failingReader satisfies io.Reader.
 var _ io.Reader = (*failingReader)(nil)
+
+func TestRunBackupDownloadPreservesDestinationOnStreamFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/projects/proj-1/backups/backup-1/database" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Length", "64")
+		_, _ = w.Write([]byte("partial"))
+	}))
+	t.Cleanup(server.Close)
+
+	destination := filepath.Join(t.TempDir(), "backup.sql")
+	if err := os.WriteFile(destination, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a, _, _ := newTestApp(t)
+	a.API = api.NewClient(server.URL, "test-key", api.Options{})
+	err := runBackupDownload(context.Background(), a, BackupDownloadOptions{
+		ProjectID:  "proj-1",
+		BackupID:   "backup-1",
+		Kind:       api.BackupDatabase,
+		OutputPath: destination,
+	})
+	if err == nil {
+		t.Fatal("expected interrupted backup download to fail")
+	}
+	got, readErr := os.ReadFile(destination)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if string(got) != "original" {
+		t.Fatalf("destination = %q, want original", got)
+	}
+}

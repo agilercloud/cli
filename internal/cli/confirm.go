@@ -28,7 +28,9 @@ func confirmDestructive(a *app.App, prompt string) error {
 		return fmt.Errorf("refusing to proceed without confirmation on a non-interactive input; pass --yes to skip the prompt")
 	}
 
-	fmt.Fprint(a.Err, prompt)
+	if _, err := fmt.Fprint(a.Err, prompt); err != nil {
+		return fmt.Errorf("write confirmation: %w", err)
+	}
 
 	reader := bufio.NewReader(a.In)
 	line, err := reader.ReadString('\n')

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -57,37 +58,15 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			in := api.CreateSQLStatement{Sql: query, ReadOnly: readOnly}
-			if timeout > 0 {
-				in.Timeout = &timeout
-			}
-
-			// Always submit with Prefer: respond-async and poll for the
-			// result. A synchronous submit holds the HTTP response open for
-			// the whole execution, which the client transport caps at 30s
-			// (ResponseHeaderTimeout) — far less than the 180s a statement
-			// may legitimately run. --async only controls whether we wait.
-			res, err := a.API.RunSQL(cmd.Context(), projectID, in, true)
-			if err != nil {
-				return err
-			}
-
-			result := res.Statement
-			if async {
-				return renderSQLStatement(a, result, res.Pending)
-			}
-			if res.Pending {
-				final, err := pollUntilComplete(cmd.Context(), pollInterval, pollTimeout, "SQL statement",
-					func() (*api.SQLStatement, error) {
-						return a.API.GetSQLStatement(cmd.Context(), projectID, result.ID, api.MaxSQLRowsPageSize, "")
-					},
-					func(s *api.SQLStatement) string { return s.Status })
-				if err != nil {
-					return err
-				}
-				result = *final
-			}
-			return renderSQLStatement(a, result, false)
+			return runSQLExecute(cmd.Context(), a, SQLExecuteOptions{
+				ProjectID:    projectID,
+				Query:        query,
+				ReadOnly:     readOnly,
+				Timeout:      timeout,
+				Async:        async,
+				PollInterval: pollInterval,
+				PollTimeout:  pollTimeout,
+			})
 		},
 	}
 	cmd.Flags().BoolVar(&readOnly, "read-only", false, "Wrap execution in a read-only transaction")
@@ -96,6 +75,47 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 	cmd.Flags().DurationVar(&pollInterval, "poll-interval", time.Second, "Poll interval while waiting for SQL completion")
 	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 10*time.Minute, "Maximum wait for SQL completion")
 	return cmd
+}
+
+// SQLExecuteOptions contains the parsed inputs for a SQL execution.
+type SQLExecuteOptions struct {
+	ProjectID    string
+	Query        string
+	ReadOnly     bool
+	Timeout      int
+	Async        bool
+	PollInterval time.Duration
+	PollTimeout  time.Duration
+}
+
+func runSQLExecute(ctx context.Context, a *app.App, opts SQLExecuteOptions) error {
+	in := api.CreateSQLStatement{Sql: opts.Query, ReadOnly: opts.ReadOnly}
+	if opts.Timeout > 0 {
+		in.Timeout = &opts.Timeout
+	}
+
+	return runCommandExecution(ctx, commandExecution[api.SQLStatement]{
+		Async:        opts.Async,
+		PollInterval: opts.PollInterval,
+		PollTimeout:  opts.PollTimeout,
+		Label:        "SQL statement",
+		// Always submit with Prefer: respond-async. --async only controls
+		// whether the CLI waits for the result.
+		Submit: func(ctx context.Context) (*api.SQLStatement, bool, error) {
+			result, err := a.API.RunSQL(ctx, opts.ProjectID, in, true)
+			if err != nil {
+				return nil, false, err
+			}
+			return &result.Statement, result.Pending, nil
+		},
+		Fetch: func(ctx context.Context, submitted *api.SQLStatement) (*api.SQLStatement, error) {
+			return a.API.GetSQLStatement(ctx, opts.ProjectID, submitted.ID, api.MaxSQLRowsPageSize, "")
+		},
+		Status: func(statement *api.SQLStatement) string { return statement.Status },
+		Render: func(statement api.SQLStatement, asyncHint bool) error {
+			return renderSQLStatement(a, statement, asyncHint)
+		},
+	})
 }
 
 func newSQLHistoryCmd(a *app.App) *cobra.Command {

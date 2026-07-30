@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -54,40 +55,14 @@ func newWPExecuteCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			in := api.CreateWPCommand{Command: command}
-			if timeout > 0 {
-				in.Timeout = &timeout
-			}
-
-			// Always submit with Prefer: respond-async and poll for the
-			// result. A synchronous submit holds the HTTP response open for
-			// the whole execution, which the client transport caps at 30s
-			// (ResponseHeaderTimeout) — far less than the 180s a wp command
-			// may legitimately run. --async only controls whether we wait.
-			res, err := a.API.RunWPCommand(cmd.Context(), projectID, in, true)
-			if err != nil {
-				return err
-			}
-
-			result := res.Command
-			if async {
-				return renderWPCommand(a, result, res.Pending)
-			}
-			if res.Pending {
-				final, err := pollUntilComplete(cmd.Context(), pollInterval, pollTimeout, "wp-cli command",
-					func() (*api.WPCommand, error) {
-						return a.API.GetWPCommand(cmd.Context(), projectID, result.ID, api.MaxWPOutputPageSize, "")
-					},
-					func(w *api.WPCommand) string { return w.Status })
-				if err != nil {
-					return err
-				}
-				result = *final
-			}
-			if err := renderWPCommand(a, result, false); err != nil {
-				return err
-			}
-			return wpCommandExecutionError(result)
+			return runWPExecute(cmd.Context(), a, WPExecuteOptions{
+				ProjectID:    projectID,
+				Command:      command,
+				Timeout:      timeout,
+				Async:        async,
+				PollInterval: pollInterval,
+				PollTimeout:  pollTimeout,
+			})
 		},
 	}
 	cmd.Flags().IntVar(&timeout, "timeout", 0, "Per-command timeout in seconds (server-side)")
@@ -95,6 +70,47 @@ func newWPExecuteCmd(a *app.App) *cobra.Command {
 	cmd.Flags().DurationVar(&pollInterval, "poll-interval", time.Second, "Poll interval while waiting for wp-cli completion")
 	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 10*time.Minute, "Maximum wait for wp-cli completion")
 	return cmd
+}
+
+// WPExecuteOptions contains the parsed inputs for a wp-cli execution.
+type WPExecuteOptions struct {
+	ProjectID    string
+	Command      string
+	Timeout      int
+	Async        bool
+	PollInterval time.Duration
+	PollTimeout  time.Duration
+}
+
+func runWPExecute(ctx context.Context, a *app.App, opts WPExecuteOptions) error {
+	in := api.CreateWPCommand{Command: opts.Command}
+	if opts.Timeout > 0 {
+		in.Timeout = &opts.Timeout
+	}
+
+	return runCommandExecution(ctx, commandExecution[api.WPCommand]{
+		Async:        opts.Async,
+		PollInterval: opts.PollInterval,
+		PollTimeout:  opts.PollTimeout,
+		Label:        "wp-cli command",
+		// Always submit with Prefer: respond-async. --async only controls
+		// whether the CLI waits for the result.
+		Submit: func(ctx context.Context) (*api.WPCommand, bool, error) {
+			result, err := a.API.RunWPCommand(ctx, opts.ProjectID, in, true)
+			if err != nil {
+				return nil, false, err
+			}
+			return &result.Command, result.Pending, nil
+		},
+		Fetch: func(ctx context.Context, submitted *api.WPCommand) (*api.WPCommand, error) {
+			return a.API.GetWPCommand(ctx, opts.ProjectID, submitted.ID, api.MaxWPOutputPageSize, "")
+		},
+		Status: func(command *api.WPCommand) string { return command.Status },
+		Render: func(command api.WPCommand, asyncHint bool) error {
+			return renderWPCommand(a, command, asyncHint)
+		},
+		Validate: wpCommandExecutionError,
+	})
 }
 
 func wpCommandExecutionError(w api.WPCommand) error {

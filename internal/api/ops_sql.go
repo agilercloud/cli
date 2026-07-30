@@ -1,10 +1,8 @@
 package api
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"net/http"
+	"io"
 
 	"github.com/agilercloud/cli/internal/publicapi"
 )
@@ -26,25 +24,17 @@ type SQLExecuteResult struct {
 // SQLStatement here.
 func (c *Client) RunSQL(ctx context.Context, projectID string, in CreateSQLStatement, async bool) (*SQLExecuteResult, error) {
 	params := &publicapi.RunSQLStatementParams{IdempotencyKey: idempotencyKey()}
-	data, err := json.Marshal(in)
+	statement, pending, err := submitCommand[CreateSQLStatement, SQLStatement](in, async, func(body io.Reader, editors ...publicapi.RequestEditorFn) (commandResponse, error) {
+		resp, err := c.impl.RunSQLStatementWithBodyWithResponse(ctx, projectID, params, "application/json", body, editors...)
+		if err != nil {
+			return commandResponse{}, err
+		}
+		return commandResponse{status: resp.StatusCode(), body: resp.Body, headers: resp.HTTPResponse.Header}, nil
+	})
 	if err != nil {
 		return nil, err
 	}
-	editors := []publicapi.RequestEditorFn{}
-	if async {
-		editors = append(editors, withHeaders(map[string]string{"Prefer": "respond-async"}))
-	}
-	resp, err := c.impl.RunSQLStatementWithBodyWithResponse(
-		ctx, projectID, params, "application/json", bytes.NewReader(data), editors...,
-	)
-	if err != nil {
-		return nil, err
-	}
-	s, err := decodeChecked[SQLStatement](resp.StatusCode(), resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return &SQLExecuteResult{Statement: *s, Pending: resp.StatusCode() == http.StatusAccepted}, nil
+	return &SQLExecuteResult{Statement: *statement, Pending: pending}, nil
 }
 
 // MaxSQLRowsPageSize is the server's maximum `limit` for result rows on the
@@ -58,19 +48,12 @@ const MaxSQLRowsPageSize = 1000
 // paginated across Link rel="next" pages as needed; limit ≤ 0 returns a
 // single page at the server's default size.
 func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit int) ([]SQLStatementListItem, error) {
-	return paginateLimited(limit, func(cursor *string, pageSize *int) ([]SQLStatementListItem, http.Header, error) {
+	return paginateCommandHistory(limit, func(cursor *string, pageSize *int) (commandResponse, *[]SQLStatementListItem, error) {
 		resp, err := c.impl.ListProjectSQLStatementsWithResponse(ctx, projectID, &publicapi.ListProjectSQLStatementsParams{Cursor: cursor, Limit: pageSize})
 		if err != nil {
-			return nil, nil, err
+			return commandResponse{}, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []SQLStatementListItem
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return commandResponse{status: resp.StatusCode(), body: resp.Body, headers: resp.HTTPResponse.Header}, resp.JSON200, nil
 	})
 }
 
@@ -79,32 +62,24 @@ func (c *Client) ListSQLStatements(ctx context.Context, projectID string, limit 
 // MaxSQLRowsPageSize); cursor resumes from a previous page's NextCursor.
 // The result's NextCursor is set when more rows remain.
 func (c *Client) GetSQLStatement(ctx context.Context, projectID, statementID string, limit int, cursor string) (*SQLStatement, error) {
-	params := &publicapi.GetProjectSQLStatementParams{}
-	if limit > 0 {
-		params.Limit = &limit
-	}
-	if cursor != "" {
-		params.Cursor = &cursor
-	}
-	resp, err := c.impl.GetProjectSQLStatementWithResponse(ctx, projectID, statementID, params)
-	if err != nil {
-		return nil, err
-	}
-	s, err := decodeChecked[SQLStatement](resp.StatusCode(), resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	s.NextCursor = nextCursorFromHeaders(resp.HTTPResponse.Header)
-	return s, nil
+	return getCommandResult(limit, cursor, func(limit *int, cursor *string) (commandResponse, error) {
+		resp, err := c.impl.GetProjectSQLStatementWithResponse(ctx, projectID, statementID, &publicapi.GetProjectSQLStatementParams{Limit: limit, Cursor: cursor})
+		if err != nil {
+			return commandResponse{}, err
+		}
+		return commandResponse{status: resp.StatusCode(), body: resp.Body, headers: resp.HTTPResponse.Header}, nil
+	}, func(statement *SQLStatement, next string) {
+		statement.NextCursor = next
+	})
 }
 
 // DeleteSQLStatement removes a statement (cancels SQL if it's pending).
 func (c *Client) DeleteSQLStatement(ctx context.Context, projectID, statementID string) error {
-	resp, err := c.impl.DeleteProjectSQLStatementWithResponse(
-		ctx, projectID, statementID, &publicapi.DeleteProjectSQLStatementParams{},
-	)
-	if err != nil {
-		return err
-	}
-	return checkStatus(resp.StatusCode(), resp.Body)
+	return deleteCommand(func() (commandResponse, error) {
+		resp, err := c.impl.DeleteProjectSQLStatementWithResponse(ctx, projectID, statementID, &publicapi.DeleteProjectSQLStatementParams{})
+		if err != nil {
+			return commandResponse{}, err
+		}
+		return commandResponse{status: resp.StatusCode(), body: resp.Body}, nil
+	})
 }

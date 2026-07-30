@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -269,7 +271,7 @@ func newLogsCmd(a *app.App) *cobra.Command {
 				}
 				q.Until = t
 			}
-			return runLogsQuery(cmd, a, projectID, q)
+			return runLogsQuery(cmd.Context(), a, projectID, q)
 		},
 	}
 	cmd.Flags().Int("limit", 0, "Maximum entries returned (0 = server default)")
@@ -309,67 +311,17 @@ func newLogsTailCmd(a *app.App) *cobra.Command {
 				}
 				since = t.UTC()
 			}
-			seen := map[string]struct{}{}
-
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, os.Interrupt)
-			defer signal.Stop(sigCh)
-
-			for {
-				cursor := ""
-				seenCursors := map[string]struct{}{}
-				for {
-					page, err := a.API.GetProjectLogsPage(cmd.Context(), projectID, api.LogsQuery{
-						Since:    since,
-						Cursor:   cursor,
-						PageSize: 1000,
-					})
-					if err != nil {
-						return err
-					}
-
-					for _, l := range page.Items {
-						key := l.RequestId.String() + l.Message
-						if _, dup := seen[key]; dup {
-							continue
-						}
-						seen[key] = struct{}{}
-
-						switch {
-						case a.Output.Format == output.FormatYAML:
-							a.Output.Text("---")
-							a.Output.Structured(l)
-						case a.Output.IsStructured():
-							a.Output.Structured(l)
-						default:
-							a.Output.Text("[%s] %s: %s", l.Timestamp.Format(time.RFC3339), l.Priority, l.Message)
-						}
-
-						if l.Timestamp.After(since) {
-							since = l.Timestamp.Add(time.Millisecond)
-						}
-					}
-
-					if page.NextCursor == "" {
-						break
-					}
-					if _, seen := seenCursors[page.NextCursor]; seen {
-						break
-					}
-					seenCursors[page.NextCursor] = struct{}{}
-					cursor = page.NextCursor
-				}
-
-				if len(seen) > 5000 {
-					seen = map[string]struct{}{}
-				}
-
-				select {
-				case <-sigCh:
-					return nil
-				case <-a.Clock.After(pollInterval):
-				}
+			tailCtx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt)
+			defer stop()
+			err = runLogsTail(tailCtx, a, LogsTailOptions{
+				ProjectID: projectID,
+				Since:     since,
+				Interval:  pollInterval,
+			})
+			if tailCtx.Err() != nil && errors.Is(err, context.Canceled) {
+				return nil
 			}
+			return err
 		},
 	}
 	cmd.Flags().String("interval", "2s", "Poll interval")
@@ -424,7 +376,7 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 				}
 				q.Until = t
 			}
-			return runLogsQuery(cmd, a, projectID, q)
+			return runLogsQuery(cmd.Context(), a, projectID, q)
 		},
 	}
 	cmd.Flags().Int("limit", 0, "Maximum entries returned (0 = server default)")
@@ -433,9 +385,9 @@ func newLogsSearchCmd(a *app.App) *cobra.Command {
 	return cmd
 }
 
-func runLogsQuery(cmd *cobra.Command, a *app.App, projectID string, q api.LogsQuery) error {
+func runLogsQuery(ctx context.Context, a *app.App, projectID string, q api.LogsQuery) error {
 	if a.Output.IsStructured() {
-		result, err := a.API.GetProjectLogs(cmd.Context(), projectID, q)
+		result, err := a.API.GetProjectLogs(ctx, projectID, q)
 		if err != nil {
 			return err
 		}
@@ -461,7 +413,7 @@ func runLogsQuery(cmd *cobra.Command, a *app.App, projectID string, q api.LogsQu
 			}
 			pageQuery.PageSize = min(remaining, pageSize)
 		}
-		page, err := a.API.GetProjectLogsPage(cmd.Context(), projectID, pageQuery)
+		page, err := a.API.GetProjectLogsPage(ctx, projectID, pageQuery)
 		if err != nil {
 			return err
 		}

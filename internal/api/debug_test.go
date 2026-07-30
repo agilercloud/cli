@@ -31,7 +31,7 @@ func TestDebugTransportLogsMethodURLAndStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if _, err := io.ReadAll(resp.Body); err != nil {
 		t.Fatalf("read body: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestDebugTransportDumpsBodyUnderCap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	got, _ := io.ReadAll(resp.Body)
 	if string(got) != `{"id":"x"}` {
 		t.Errorf("body altered by debug transport: %q", got)
@@ -128,7 +128,7 @@ func TestDebugTransportElidesLargeBody(t *testing.T) {
 	big := strings.Repeat("a", debugBodyCap+1024)
 	client, base, cleanup := newDebugClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, big)
+		_, _ = fmt.Fprint(w, big)
 	}, &buf)
 	defer cleanup()
 

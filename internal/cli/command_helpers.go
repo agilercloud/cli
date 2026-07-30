@@ -54,3 +54,43 @@ func pollUntilComplete[T any](ctx context.Context, interval, timeout time.Durati
 		}
 	}
 }
+
+// commandExecution describes the mechanical submit/wait/render workflow used
+// by SQL and wp-cli. Resource-specific inputs, result types, rendering, and
+// terminal validation remain in their respective command files.
+type commandExecution[T any] struct {
+	Async        bool
+	PollInterval time.Duration
+	PollTimeout  time.Duration
+	Label        string
+	Submit       func(context.Context) (*T, bool, error)
+	Fetch        func(context.Context, *T) (*T, error)
+	Status       func(*T) string
+	Render       func(T, bool) error
+	Validate     func(T) error
+}
+
+func runCommandExecution[T any](ctx context.Context, opts commandExecution[T]) error {
+	result, pending, err := opts.Submit(ctx)
+	if err != nil {
+		return err
+	}
+	if opts.Async {
+		return opts.Render(*result, pending)
+	}
+	if pending {
+		final, err := pollUntilComplete(ctx, opts.PollInterval, opts.PollTimeout, opts.Label,
+			func() (*T, error) { return opts.Fetch(ctx, result) }, opts.Status)
+		if err != nil {
+			return err
+		}
+		result = final
+	}
+	if err := opts.Render(*result, false); err != nil {
+		return err
+	}
+	if opts.Validate != nil {
+		return opts.Validate(*result)
+	}
+	return nil
+}

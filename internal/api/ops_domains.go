@@ -33,13 +33,7 @@ func (c *Client) CreateDomain(ctx context.Context, projectID string, in CreateDo
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON201 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON201, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON201)
 }
 
 // UpdateDomain patches a domain (currently: primary flag) and returns the
@@ -51,13 +45,7 @@ func (c *Client) UpdateDomain(ctx context.Context, projectID, domainID string, i
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // DeleteDomain detaches a domain.
