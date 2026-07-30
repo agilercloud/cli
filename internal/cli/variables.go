@@ -132,21 +132,13 @@ func newVariablesCmd(a *app.App) *cobra.Command {
 }
 
 func renderVariablesList(w *output.Writer, vars []api.Variable) {
-	if w.IsStructured() {
-		w.Structured(vars)
-		return
-	}
-	if len(vars) == 0 {
-		w.Text("No variables set.")
-		return
-	}
-	rows := make([][]string, len(vars))
-	for i, v := range vars {
-		value := "(hidden)"
-		if v.Value != nil {
-			value = *v.Value
-		}
-		rows[i] = []string{v.Id.String(), v.Name, output.YesNo(v.Sensitive), value}
-	}
-	w.Table([]string{"ID", "NAME", "SENSITIVE", "VALUE"}, rows)
+	renderTable(w, vars, "No variables set.",
+		[]string{"ID", "NAME", "SENSITIVE", "VALUE"},
+		func(v api.Variable) []string {
+			value := "(hidden)"
+			if v.Value != nil {
+				value = *v.Value
+			}
+			return []string{v.Id.String(), v.Name, output.YesNo(v.Sensitive), value}
+		})
 }

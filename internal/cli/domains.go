@@ -117,21 +117,13 @@ func newDomainsCmd(a *app.App) *cobra.Command {
 }
 
 func renderDomainsList(w *output.Writer, domains []api.Domain) {
-	if w.IsStructured() {
-		w.Structured(domains)
-		return
-	}
-	if len(domains) == 0 {
-		w.Text("No domains configured.")
-		return
-	}
-	rows := make([][]string, len(domains))
-	for i, d := range domains {
-		primary := ""
-		if d.Primary {
-			primary = "yes"
-		}
-		rows[i] = []string{d.Id.String(), d.Name, primary}
-	}
-	w.Table([]string{"ID", "NAME", "PRIMARY"}, rows)
+	renderTable(w, domains, "No domains configured.",
+		[]string{"ID", "NAME", "PRIMARY"},
+		func(d api.Domain) []string {
+			primary := ""
+			if d.Primary {
+				primary = "yes"
+			}
+			return []string{d.Id.String(), d.Name, primary}
+		})
 }

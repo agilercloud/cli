@@ -109,24 +109,16 @@ func newWorkspacesMembersCmd(a *app.App) *cobra.Command {
 }
 
 func renderWorkspacesList(w *output.Writer, ws []api.Workspace) {
-	if w.IsStructured() {
-		w.Structured(ws)
-		return
-	}
-	if len(ws) == 0 {
-		w.Text("No workspaces found.")
-		return
-	}
-	rows := make([][]string, len(ws))
-	for i, s := range ws {
-		rows[i] = []string{
-			s.Id.String(),
-			s.Name,
-			s.Role,
-			output.YesNo(s.RequireMfa),
-		}
-	}
-	w.Table([]string{"ID", "NAME", "ROLE", "REQUIRE MFA"}, rows)
+	renderTable(w, ws, "No workspaces found.",
+		[]string{"ID", "NAME", "ROLE", "REQUIRE MFA"},
+		func(s api.Workspace) []string {
+			return []string{
+				s.Id.String(),
+				s.Name,
+				s.Role,
+				output.YesNo(s.RequireMfa),
+			}
+		})
 }
 
 func renderWorkspaceDetail(w *output.Writer, s api.Workspace) error {
@@ -152,27 +144,19 @@ func renderWorkspaceDetail(w *output.Writer, s api.Workspace) error {
 }
 
 func renderWorkspaceMembersList(w *output.Writer, members []api.WorkspaceMember) {
-	if w.IsStructured() {
-		w.Structured(members)
-		return
-	}
-	if len(members) == 0 {
-		w.Text("No workspace members found.")
-		return
-	}
-	rows := make([][]string, len(members))
-	for i, m := range members {
-		rows[i] = []string{
-			workspaceMemberID(m),
-			m.Email,
-			optionalString(m.Name),
-			m.Role,
-			m.Status,
-			output.YesNo(m.IsBillingUser),
-			optionalBool(m.MfaEnabled),
-		}
-	}
-	w.Table([]string{"ID", "EMAIL", "NAME", "ROLE", "STATUS", "BILLING", "MFA"}, rows)
+	renderTable(w, members, "No workspace members found.",
+		[]string{"ID", "EMAIL", "NAME", "ROLE", "STATUS", "BILLING", "MFA"},
+		func(m api.WorkspaceMember) []string {
+			return []string{
+				workspaceMemberID(m),
+				m.Email,
+				optionalString(m.Name),
+				m.Role,
+				m.Status,
+				output.YesNo(m.IsBillingUser),
+				optionalBool(m.MfaEnabled),
+			}
+		})
 }
 
 func workspaceMemberID(m api.WorkspaceMember) string {

@@ -213,29 +213,21 @@ func newBackupsCmd(a *app.App) *cobra.Command {
 }
 
 func renderBackupsList(w *output.Writer, backups []api.Backup) {
-	if w.IsStructured() {
-		w.Structured(backups)
-		return
-	}
-	if len(backups) == 0 {
-		w.Text("No backups found.")
-		return
-	}
-	rows := make([][]string, len(backups))
-	for i, b := range backups {
-		size := ""
-		if b.Size != nil {
-			size = fmt.Sprintf("%d", *b.Size)
-		}
-		rows[i] = []string{
-			b.Id.String(),
-			b.Status,
-			b.CreatedAt.Format(time.RFC3339),
-			output.YesNo(b.Automatic),
-			size,
-		}
-	}
-	w.Table([]string{"ID", "STATUS", "CREATED", "AUTO", "SIZE (MB)"}, rows)
+	renderTable(w, backups, "No backups found.",
+		[]string{"ID", "STATUS", "CREATED", "AUTO", "SIZE (MB)"},
+		func(b api.Backup) []string {
+			size := ""
+			if b.Size != nil {
+				size = fmt.Sprintf("%d", *b.Size)
+			}
+			return []string{
+				b.Id.String(),
+				b.Status,
+				b.CreatedAt.Format(time.RFC3339),
+				output.YesNo(b.Automatic),
+				size,
+			}
+		})
 }
 
 func renderBackupPolicy(w *output.Writer, p api.BackupPolicy) {

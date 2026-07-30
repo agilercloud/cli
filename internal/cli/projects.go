@@ -452,19 +452,11 @@ func runLogsQuery(ctx context.Context, a *app.App, projectID string, q api.LogsQ
 // --- Renderers ---
 
 func renderProjectsList(w *output.Writer, ps []api.Project) {
-	if w.IsStructured() {
-		w.Structured(ps)
-		return
-	}
-	if len(ps) == 0 {
-		w.Text("No projects found.")
-		return
-	}
-	rows := make([][]string, len(ps))
-	for i, p := range ps {
-		rows[i] = []string{p.Id.String(), p.Name, p.Status, p.Region, p.Runtime, p.WorkspaceId.String()}
-	}
-	w.Table([]string{"ID", "NAME", "STATUS", "REGION", "RUNTIME", "WORKSPACE"}, rows)
+	renderTable(w, ps, "No projects found.",
+		[]string{"ID", "NAME", "STATUS", "REGION", "RUNTIME", "WORKSPACE"},
+		func(p api.Project) []string {
+			return []string{p.Id.String(), p.Name, p.Status, p.Region, p.Runtime, p.WorkspaceId.String()}
+		})
 }
 
 func renderProjectDetail(w *output.Writer, p api.ProjectDetail) error {
@@ -492,30 +484,19 @@ func renderProjectDetail(w *output.Writer, p api.ProjectDetail) error {
 }
 
 func renderUsageList(w *output.Writer, us []api.Usage) {
-	if w.IsStructured() {
-		w.Structured(us)
-		return
-	}
-	if len(us) == 0 {
-		w.Text("No usage data.")
-		return
-	}
-	rows := make([][]string, len(us))
-	for i, u := range us {
-		rows[i] = []string{
-			u.EventsAt.Format(time.RFC3339),
-			fmt.Sprintf("%d", u.RequestsTotal),
-			fmt.Sprintf("%d", u.Responses2xx),
-			fmt.Sprintf("%d", u.Responses4xx),
-			fmt.Sprintf("%d", u.Responses5xx),
-			fmt.Sprintf("%d", u.DurationAverage),
-			fmt.Sprintf("%d", u.DatatransferOut),
-		}
-	}
-	w.Table(
+	renderTable(w, us, "No usage data.",
 		[]string{"DATE", "REQUESTS", "2XX", "4XX", "5XX", "AVG DURATION", "DATA OUT (MB)"},
-		rows,
-	)
+		func(u api.Usage) []string {
+			return []string{
+				u.EventsAt.Format(time.RFC3339),
+				fmt.Sprintf("%d", u.RequestsTotal),
+				fmt.Sprintf("%d", u.Responses2xx),
+				fmt.Sprintf("%d", u.Responses4xx),
+				fmt.Sprintf("%d", u.Responses5xx),
+				fmt.Sprintf("%d", u.DurationAverage),
+				fmt.Sprintf("%d", u.DatatransferOut),
+			}
+		})
 }
 
 func renderLogsList(w *output.Writer, ls []api.LogEntry) {

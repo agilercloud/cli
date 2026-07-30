@@ -52,17 +52,9 @@ func newNotificationsCmd(a *app.App) *cobra.Command {
 }
 
 func renderNotificationsList(w *output.Writer, ns []api.Notification) {
-	if w.IsStructured() {
-		w.Structured(ns)
-		return
-	}
-	if len(ns) == 0 {
-		w.Text("No notifications.")
-		return
-	}
-	rows := make([][]string, len(ns))
-	for i, n := range ns {
-		rows[i] = []string{n.Id, n.CreatedAt.Format(time.RFC3339), n.Priority, n.Title}
-	}
-	w.Table([]string{"ID", "CREATED", "PRIORITY", "TITLE"}, rows)
+	renderTable(w, ns, "No notifications.",
+		[]string{"ID", "CREATED", "PRIORITY", "TITLE"},
+		func(n api.Notification) []string {
+			return []string{n.Id, n.CreatedAt.Format(time.RFC3339), n.Priority, n.Title}
+		})
 }

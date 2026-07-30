@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,6 +47,84 @@ var (
 	testID1  = uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	testID2  = uuid.MustParse("00000000-0000-0000-0000-000000000002")
 )
+
+func TestRenderTable(t *testing.T) {
+	type item struct {
+		ID    string
+		Count int
+	}
+	items := []item{{ID: "alpha", Count: 7}, {ID: "beta", Count: 9}}
+	tests := []struct {
+		name   string
+		format output.Format
+		quiet  bool
+		items  []item
+		want   string
+	}{
+		{name: "csv", format: output.FormatCSV, items: items, want: "ID,COUNT\nalpha,7\nbeta,9\n"},
+		{name: "quiet", format: output.FormatText, quiet: true, items: items, want: "alpha\nbeta\n"},
+		{name: "empty", format: output.FormatText, want: "No items.\n"},
+		{name: "empty quiet", format: output.FormatText, quiet: true, want: "No items.\n"},
+		{name: "empty csv", format: output.FormatCSV, want: "No items.\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			w := output.New(tt.format, tt.quiet, &buf, &bytes.Buffer{})
+			mapperCalls := 0
+			renderTable(w, tt.items, "No items.", []string{"ID", "COUNT"}, func(item item) []string {
+				mapperCalls++
+				return []string{item.ID, fmt.Sprintf("%d", item.Count)}
+			})
+			if got := buf.String(); got != tt.want {
+				t.Errorf("output:\n--- want ---\n%s--- got ---\n%s", tt.want, got)
+			}
+			if mapperCalls != len(tt.items) {
+				t.Errorf("mapper calls = %d, want %d", mapperCalls, len(tt.items))
+			}
+		})
+	}
+}
+
+func TestRenderTableStructuredPreservesItems(t *testing.T) {
+	type item struct {
+		ID    string `json:"id"`
+		Count int    `json:"count"`
+	}
+	tests := []struct {
+		name  string
+		quiet bool
+		items []item
+		want  string
+	}{
+		{
+			name:  "items",
+			items: []item{{ID: "alpha", Count: 7}},
+			want:  "[\n  {\n    \"id\": \"alpha\",\n    \"count\": 7\n  }\n]\n",
+		},
+		{
+			name:  "quiet",
+			quiet: true,
+			items: []item{{ID: "alpha", Count: 7}},
+			want:  "[\n  {\n    \"id\": \"alpha\",\n    \"count\": 7\n  }\n]\n",
+		},
+		{name: "nil", items: nil, want: "null\n"},
+		{name: "empty", items: []item{}, want: "[]\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			w := output.New(output.FormatJSON, tt.quiet, &buf, &bytes.Buffer{})
+			renderTable(w, tt.items, "No items.", []string{"ID"}, func(item) []string {
+				t.Fatal("row mapper called for structured output")
+				return nil
+			})
+			if got := buf.String(); got != tt.want {
+				t.Errorf("output:\n--- want ---\n%s--- got ---\n%s", tt.want, got)
+			}
+		})
+	}
+}
 
 func TestRenderProjectsList(t *testing.T) {
 	data := []api.Project{

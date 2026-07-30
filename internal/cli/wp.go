@@ -243,33 +243,22 @@ func renderWPCommand(a *app.App, w api.WPCommand, asyncHint bool) error {
 }
 
 func renderWPHistory(a *app.App, items []api.WPCommandListItem) {
-	if a.Output.IsStructured() {
-		a.Output.Structured(items)
-		return
-	}
-	if len(items) == 0 {
-		a.Output.Text("No wp-cli history.")
-		return
-	}
-	rows := make([][]string, len(items))
-	for i, w := range items {
-		duration := ""
-		if w.DurationMs != nil {
-			duration = fmt.Sprintf("%dms", *w.DurationMs)
-		}
-		// CommandPreview is already truncated server-side to 80 runes
-		// (ending in "…" if longer); the table column then trims further
-		// to fit.
-		rows[i] = []string{
-			w.Id,
-			w.Status,
-			truncateForTable(w.CommandPreview, 60),
-			w.SubmittedAt,
-			duration,
-		}
-	}
-	a.Output.Table(
+	renderTable(a.Output, items, "No wp-cli history.",
 		[]string{"ID", "STATUS", "COMMAND", "SUBMITTED", "DURATION"},
-		rows,
-	)
+		func(w api.WPCommandListItem) []string {
+			duration := ""
+			if w.DurationMs != nil {
+				duration = fmt.Sprintf("%dms", *w.DurationMs)
+			}
+			// CommandPreview is already truncated server-side to 80 runes
+			// (ending in "…" if longer); the table column then trims further
+			// to fit.
+			return []string{
+				w.Id,
+				w.Status,
+				truncateForTable(w.CommandPreview, 60),
+				w.SubmittedAt,
+				duration,
+			}
+		})
 }

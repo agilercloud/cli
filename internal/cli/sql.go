@@ -281,34 +281,23 @@ func formatCell(v any) string {
 }
 
 func renderSQLHistory(a *app.App, items []api.SQLStatementListItem) {
-	if a.Output.IsStructured() {
-		a.Output.Structured(items)
-		return
-	}
-	if len(items) == 0 {
-		a.Output.Text("No SQL history.")
-		return
-	}
-	rows := make([][]string, len(items))
-	for i, s := range items {
-		duration := ""
-		if s.DurationMs != nil {
-			duration = fmt.Sprintf("%dms", *s.DurationMs)
-		}
-		// SqlPreview is already truncated server-side to 80 runes (ending
-		// in "…" if longer); the table column then trims further to fit.
-		rows[i] = []string{
-			s.Id,
-			s.Status,
-			truncateForTable(s.SqlPreview, 60),
-			s.SubmittedAt,
-			duration,
-		}
-	}
-	a.Output.Table(
+	renderTable(a.Output, items, "No SQL history.",
 		[]string{"ID", "STATUS", "SQL", "SUBMITTED", "DURATION"},
-		rows,
-	)
+		func(s api.SQLStatementListItem) []string {
+			duration := ""
+			if s.DurationMs != nil {
+				duration = fmt.Sprintf("%dms", *s.DurationMs)
+			}
+			// SqlPreview is already truncated server-side to 80 runes (ending
+			// in "…" if longer); the table column then trims further to fit.
+			return []string{
+				s.Id,
+				s.Status,
+				truncateForTable(s.SqlPreview, 60),
+				s.SubmittedAt,
+				duration,
+			}
+		})
 }
 
 // truncateForTable trims long SQL strings to keep the history table

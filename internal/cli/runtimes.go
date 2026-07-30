@@ -31,23 +31,15 @@ func newRuntimesCmd(a *app.App) *cobra.Command {
 }
 
 func renderRuntimesList(w *output.Writer, rs []api.Runtime) {
-	if w.IsStructured() {
-		w.Structured(rs)
-		return
-	}
-	if len(rs) == 0 {
-		w.Text("No runtimes available.")
-		return
-	}
-	rows := make([][]string, len(rs))
-	for i, r := range rs {
-		deprecated := ""
-		if r.DeprecatedAt != nil {
-			deprecated = r.DeprecatedAt.Format(time.RFC3339)
-		}
-		rows[i] = []string{r.Id, r.Description, deprecated}
-	}
-	w.Table([]string{"ID", "DESCRIPTION", "DEPRECATED"}, rows)
+	renderTable(w, rs, "No runtimes available.",
+		[]string{"ID", "DESCRIPTION", "DEPRECATED"},
+		func(r api.Runtime) []string {
+			deprecated := ""
+			if r.DeprecatedAt != nil {
+				deprecated = r.DeprecatedAt.Format(time.RFC3339)
+			}
+			return []string{r.Id, r.Description, deprecated}
+		})
 }
 
 func renderRuntimeDetail(w *output.Writer, r api.Runtime) error {

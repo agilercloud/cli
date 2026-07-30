@@ -31,19 +31,9 @@ func newRegionsCmd(a *app.App) *cobra.Command {
 }
 
 func renderRegionsList(w *output.Writer, rs []api.Region) {
-	if w.IsStructured() {
-		w.Structured(rs)
-		return
-	}
-	if len(rs) == 0 {
-		w.Text("No regions available.")
-		return
-	}
-	rows := make([][]string, len(rs))
-	for i, r := range rs {
-		rows[i] = []string{r.Id, r.Description}
-	}
-	w.Table([]string{"ID", "DESCRIPTION"}, rows)
+	renderTable(w, rs, "No regions available.",
+		[]string{"ID", "DESCRIPTION"},
+		func(r api.Region) []string { return []string{r.Id, r.Description} })
 }
 
 func renderRegionDetail(w *output.Writer, r api.Region) error {
