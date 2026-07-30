@@ -38,14 +38,7 @@ func (c *Client) ListProjectFiles(ctx context.Context, projectID, remotePath str
 			if err != nil {
 				return nil, nil, err
 			}
-			if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-				return nil, nil, err
-			}
-			var items []File
-			if resp.JSON200 != nil {
-				items = *resp.JSON200
-			}
-			return items, resp.HTTPResponse.Header, nil
+			return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 		})
 	}
 	return paginateAll(func(cursor *string) ([]File, http.Header, error) {
@@ -53,14 +46,7 @@ func (c *Client) ListProjectFiles(ctx context.Context, projectID, remotePath str
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []File
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 

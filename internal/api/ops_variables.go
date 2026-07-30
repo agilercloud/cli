@@ -16,14 +16,7 @@ func (c *Client) ListVariables(ctx context.Context, projectID string) ([]Variabl
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []Variable
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 

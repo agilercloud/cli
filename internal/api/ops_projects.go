@@ -24,14 +24,7 @@ func (c *Client) ListProjects(ctx context.Context, workspaceID string) ([]Projec
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []Project
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 
@@ -41,13 +34,7 @@ func (c *Client) GetProject(ctx context.Context, projectID string) (*ProjectDeta
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // CreateProject creates a project with an auto-generated Idempotency-Key.
@@ -57,13 +44,7 @@ func (c *Client) CreateProject(ctx context.Context, in CreateProjectInput) (*Pro
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON201 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON201, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON201)
 }
 
 // UpdateProject patches a project and returns the refreshed entity, so
@@ -73,13 +54,7 @@ func (c *Client) UpdateProject(ctx context.Context, projectID string, in UpdateP
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // DeleteProject removes a project.

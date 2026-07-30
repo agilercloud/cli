@@ -17,14 +17,7 @@ func (c *Client) ListRegions(ctx context.Context) ([]Region, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []Region
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 
@@ -34,13 +27,7 @@ func (c *Client) GetRegion(ctx context.Context, regionID string) (*Region, error
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // ListRuntimes returns the catalog of runtime images, following Link
@@ -51,14 +38,7 @@ func (c *Client) ListRuntimes(ctx context.Context) ([]Runtime, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []Runtime
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 
@@ -68,13 +48,7 @@ func (c *Client) GetRuntime(ctx context.Context, runtimeID string) (*Runtime, er
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // GetStatus probes the unversioned /status health endpoint. Doesn't go

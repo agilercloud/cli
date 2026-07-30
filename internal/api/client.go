@@ -171,6 +171,16 @@ func requireJSONResponse[T any](statusCode int, body []byte, value *T) (*T, erro
 	return value, nil
 }
 
+// requireJSONPage checks a generated buffered list response, requires its
+// typed success body, and returns the page items with the response headers.
+func requireJSONPage[T any](statusCode int, body []byte, value *[]T, headers http.Header) ([]T, http.Header, error) {
+	items, err := requireJSONResponse(statusCode, body, value)
+	if err != nil {
+		return nil, nil, err
+	}
+	return *items, headers, nil
+}
+
 // decodeErrorFromHTTPResponse reads and parses an error from a streaming
 // *http.Response. The response body is consumed and closed. Returns nil
 // if the status code is 2xx.

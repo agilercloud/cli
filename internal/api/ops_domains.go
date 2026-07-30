@@ -15,14 +15,7 @@ func (c *Client) ListDomains(ctx context.Context, projectID string) ([]Domain, e
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []Domain
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 

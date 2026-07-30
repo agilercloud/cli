@@ -14,13 +14,7 @@ func (c *Client) GetSelfUser(ctx context.Context) (*SelfUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // GetBilling returns the caller's billing posture (card brand, address,
@@ -30,13 +24,7 @@ func (c *Client) GetBilling(ctx context.Context) (*Billing, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // UpdateBilling patches billing settings (address, budget, etc.).
@@ -58,14 +46,7 @@ func (c *Client) ListBillingTransactions(ctx context.Context) ([]BillingMonth, e
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []BillingMonth
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 
@@ -91,14 +72,7 @@ func (c *Client) ListNotifications(ctx context.Context) ([]Notification, error) 
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []Notification
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 

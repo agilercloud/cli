@@ -15,13 +15,7 @@ func (c *Client) ListRuleOptions(ctx context.Context) (*RuleOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // ListProjectRules returns all rules attached to a project, following
@@ -32,14 +26,7 @@ func (c *Client) ListProjectRules(ctx context.Context, projectID string) ([]Rule
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []Rule
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 
@@ -50,13 +37,7 @@ func (c *Client) CreateRule(ctx context.Context, projectID string, in CreateRule
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON201 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON201, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON201)
 }
 
 // UpdateRule patches an existing rule and returns the refreshed entity.
@@ -67,13 +48,7 @@ func (c *Client) UpdateRule(ctx context.Context, projectID, ruleID string, in Up
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // DeleteRule removes a rule.

@@ -15,14 +15,7 @@ func (c *Client) ListBackups(ctx context.Context, projectID string) ([]Backup, e
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-			return nil, nil, err
-		}
-		var items []Backup
-		if resp.JSON200 != nil {
-			items = *resp.JSON200
-		}
-		return items, resp.HTTPResponse.Header, nil
+		return requireJSONPage(resp.StatusCode(), resp.Body, resp.JSON200, resp.HTTPResponse.Header)
 	})
 }
 
@@ -33,13 +26,7 @@ func (c *Client) CreateBackup(ctx context.Context, projectID string) (*Backup, e
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON201 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON201, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON201)
 }
 
 // DeleteBackup removes a backup record.
@@ -72,13 +59,7 @@ func (c *Client) GetBackupPolicy(ctx context.Context, projectID string) (*Backup
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // SetBackupPolicy patches the per-project backup schedule and returns the
@@ -90,13 +71,7 @@ func (c *Client) SetBackupPolicy(ctx context.Context, projectID string, in Updat
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // BackupArtifact selects which artifact of a backup to download.

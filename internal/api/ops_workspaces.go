@@ -12,13 +12,11 @@ func (c *Client) ListWorkspaces(ctx context.Context) ([]Workspace, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+	workspaces, err := requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
+	if err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return *resp.JSON200, nil
+	return *workspaces, nil
 }
 
 // GetWorkspace fetches one workspace by ID.
@@ -27,13 +25,7 @@ func (c *Client) GetWorkspace(ctx context.Context, workspaceID string) (*Workspa
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
 
 // CreateWorkspace creates a workspace with an auto-generated Idempotency-Key.
@@ -43,13 +35,7 @@ func (c *Client) CreateWorkspace(ctx context.Context, in CreateWorkspaceInput) (
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON201 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON201, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON201)
 }
 
 // ListWorkspaceMembers fetches workspace members and pending invites.
@@ -58,13 +44,11 @@ func (c *Client) ListWorkspaceMembers(ctx context.Context, workspaceID string) (
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
+	members, err := requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
+	if err != nil {
 		return nil, err
 	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return *resp.JSON200, nil
+	return *members, nil
 }
 
 // GetWorkspaceBillingTransfer fetches the pending billing transfer, if any.
@@ -73,11 +57,5 @@ func (c *Client) GetWorkspaceBillingTransfer(ctx context.Context, workspaceID st
 	if err != nil {
 		return nil, err
 	}
-	if err := checkStatus(resp.StatusCode(), resp.Body); err != nil {
-		return nil, err
-	}
-	if resp.JSON200 == nil {
-		return nil, errEmptyBody
-	}
-	return resp.JSON200, nil
+	return requireJSONResponse(resp.StatusCode(), resp.Body, resp.JSON200)
 }
