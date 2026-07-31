@@ -3,8 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io"
-	"path/filepath"
 	"time"
 
 	"github.com/agilercloud/cli/internal/api"
@@ -269,31 +267,8 @@ func runBackupDownload(ctx context.Context, a *app.App, opts BackupDownloadOptio
 	if err != nil {
 		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if opts.OutputPath == "" || opts.OutputPath == "-" {
-		if _, err := io.Copy(a.Out, resp.Body); err != nil {
-			return fmt.Errorf("write file: %w", err)
-		}
-		return nil
-	}
-
-	body := io.Reader(resp.Body)
-	var prog *output.ProgressReader
-	if opts.ShowProgress && a.Output.ErrColor.Enabled() {
-		prog = output.NewProgressReader(resp.Body, a.Err, filepath.Base(opts.OutputPath), resp.ContentLength, a.Output.ErrColor)
-		body = prog
-	}
-
-	n, err := writeStreamAtomic(opts.OutputPath, body)
-	if prog != nil {
-		prog.Finish(err == nil)
-	}
-	if err != nil {
-		return err
-	}
-	if prog == nil {
-		a.Output.Stderr("Downloaded %d bytes to %s", n, opts.OutputPath)
-	}
-	return nil
+	return writeDownloadResponse(a, resp, downloadResponseOptions{
+		OutputPath:   opts.OutputPath,
+		ShowProgress: opts.ShowProgress,
+	})
 }

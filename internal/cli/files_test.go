@@ -219,8 +219,9 @@ func TestDownloadSingleFilePreservesDestinationOnStreamFailure(t *testing.T) {
 	if err := os.WriteFile(destination, []byte("original"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	client := api.NewClient(server.URL, "test-key", api.Options{})
-	if err := downloadSingleFile(context.Background(), client, "proj-1", "remote.txt", destination); err == nil {
+	a, _, _ := newTestApp(t)
+	a.API = api.NewClient(server.URL, "test-key", api.Options{})
+	if err := downloadSingleFile(context.Background(), a, "proj-1", "remote.txt", destination, false); err == nil {
 		t.Fatal("expected interrupted download to fail")
 	}
 	got, err := os.ReadFile(destination)
@@ -241,8 +242,9 @@ func TestDownloadSingleFileCreatesParentsAndAppliesLastModified(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	destination := filepath.Join(t.TempDir(), "new", "nested", "file.txt")
-	client := api.NewClient(server.URL, "test-key", api.Options{})
-	if err := downloadSingleFile(context.Background(), client, "proj-1", "remote.txt", destination); err != nil {
+	a, _, errOut := newTestApp(t)
+	a.API = api.NewClient(server.URL, "test-key", api.Options{})
+	if err := downloadSingleFile(context.Background(), a, "proj-1", "remote.txt", destination, false); err != nil {
 		t.Fatalf("downloadSingleFile: %v", err)
 	}
 	got, err := os.ReadFile(destination)
@@ -258,5 +260,8 @@ func TestDownloadSingleFileCreatesParentsAndAppliesLastModified(t *testing.T) {
 	}
 	if !info.ModTime().Equal(modified) {
 		t.Fatalf("mtime = %v, want %v", info.ModTime(), modified)
+	}
+	if !strings.Contains(errOut.String(), "Downloaded 8 bytes to "+destination) {
+		t.Fatalf("completion output = %q, want byte count and destination", errOut.String())
 	}
 }

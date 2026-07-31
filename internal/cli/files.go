@@ -246,43 +246,28 @@ func runFilesUpload(ctx context.Context, a *app.App, opts FilesUploadOptions) er
 
 // --- Download ---
 
-func downloadSingleFile(ctx context.Context, client *api.Client, projectID, remotePath, localPath string) error {
-	return downloadSingleFileWithProgress(ctx, client, projectID, remotePath, localPath, nil)
-}
-
-func downloadSingleFileWithProgress(ctx context.Context, client *api.Client, projectID, remotePath, localPath string, prog *progressOptions) error {
-	resp, err := client.GetProjectFile(ctx, projectID, remotePath)
+func downloadSingleFile(ctx context.Context, a *app.App, projectID, remotePath, localPath string, showProgress bool) error {
+	resp, err := a.API.GetProjectFile(ctx, projectID, remotePath)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
-		return fmt.Errorf("create parent directory: %w", err)
-	}
-
-	body := io.Reader(resp.Body)
-	var pr *output.ProgressReader
-	if prog != nil {
-		pr = output.NewProgressReader(resp.Body, prog.w, filepath.Base(localPath), resp.ContentLength, prog.color)
-		body = pr
-	}
-
-	_, copyErr := writeStreamAtomic(localPath, body)
-
-	if pr != nil {
-		pr.Finish(copyErr == nil)
-	}
-	if copyErr != nil {
-		return copyErr
-	}
-
-	if lastMod := resp.Header.Get("Last-Modified"); lastMod != "" {
-		if t, err := http.ParseTime(lastMod); err == nil {
-			_ = os.Chtimes(localPath, t, t)
-		}
-	}
-	return nil
+	return writeDownloadResponse(a, resp, downloadResponseOptions{
+		OutputPath:   localPath,
+		ShowProgress: showProgress,
+		BeforeWrite: func() error {
+			if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+				return fmt.Errorf("create parent directory: %w", err)
+			}
+			return nil
+		},
+		AfterWrite: func() {
+			if lastMod := resp.Header.Get("Last-Modified"); lastMod != "" {
+				if t, err := http.ParseTime(lastMod); err == nil {
+					_ = os.Chtimes(localPath, t, t)
+				}
+			}
+		},
+	})
 }
 
 type progressOptions struct {
@@ -317,12 +302,11 @@ func downloadDir(ctx context.Context, a *app.App, projectID, remoteBase, localDi
 			continue
 		}
 
-		if err := downloadSingleFile(ctx, a.API, projectID, remotePath, localPath); err != nil {
+		if err := downloadSingleFile(ctx, a, projectID, remotePath, localPath, false); err != nil {
 			a.Output.Stderr("error %s: %v", remotePath, err)
 			stats.errors++
 			continue
 		}
-		a.Output.Stderr("download %s", remotePath)
 		stats.transferred++
 	}
 	return nil
@@ -386,17 +370,7 @@ func runFilesGet(ctx context.Context, a *app.App, opts FilesGetOptions) error {
 		return nil
 	}
 
-	if opts.OutputPath == "" || opts.OutputPath == "-" {
-		resp, err := a.API.GetProjectFile(ctx, opts.ProjectID, opts.RemotePath)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = resp.Body.Close() }()
-		_, err = io.Copy(a.Out, resp.Body)
-		return err
-	}
-
-	if !opts.Force {
+	if opts.OutputPath != "" && opts.OutputPath != "-" && !opts.Force {
 		parentDir := remoteParentDir(opts.RemotePath)
 		remoteEntries, err := a.API.ListProjectFiles(ctx, opts.ProjectID, parentDir)
 		if err == nil {
@@ -413,17 +387,7 @@ func runFilesGet(ctx context.Context, a *app.App, opts FilesGetOptions) error {
 		}
 	}
 
-	var prog *progressOptions
-	if opts.ShowProgress && a.Output.ErrColor.Enabled() {
-		prog = &progressOptions{w: a.Err, color: a.Output.ErrColor}
-	}
-	if err := downloadSingleFileWithProgress(ctx, a.API, opts.ProjectID, opts.RemotePath, opts.OutputPath, prog); err != nil {
-		return err
-	}
-	if prog == nil {
-		a.Output.Stderr("Downloaded to %s", opts.OutputPath)
-	}
-	return nil
+	return downloadSingleFile(ctx, a, opts.ProjectID, opts.RemotePath, opts.OutputPath, opts.ShowProgress)
 }
 
 // --- List ---

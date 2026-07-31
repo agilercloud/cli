@@ -2,8 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"io"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -56,33 +54,10 @@ func newBillingCmd(a *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer func() { _ = resp.Body.Close() }()
-
-			if outputPath == "" || outputPath == "-" {
-				if _, err := io.Copy(a.Out, resp.Body); err != nil {
-					return fmt.Errorf("write file: %w", err)
-				}
-				return nil
-			}
-
-			body := io.Reader(resp.Body)
-			var prog *output.ProgressReader
-			if showProgress && a.Output.ErrColor.Enabled() {
-				prog = output.NewProgressReader(resp.Body, a.Err, filepath.Base(outputPath), resp.ContentLength, a.Output.ErrColor)
-				body = prog
-			}
-
-			n, err := writeStreamAtomic(outputPath, body)
-			if prog != nil {
-				prog.Finish(err == nil)
-			}
-			if err != nil {
-				return err
-			}
-			if prog == nil {
-				a.Output.Stderr("Downloaded %d bytes to %s", n, outputPath)
-			}
-			return nil
+			return writeDownloadResponse(a, resp, downloadResponseOptions{
+				OutputPath:   outputPath,
+				ShowProgress: showProgress,
+			})
 		},
 	}
 	stmt.Flags().StringP("output", "o", "", "Output file path (default: stdout)")
