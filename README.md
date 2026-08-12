@@ -16,7 +16,7 @@ brew install agilercloud/tap/agiler
 curl -fsSL https://raw.githubusercontent.com/agilercloud/cli/main/install.sh | sh
 ```
 
-Installs the latest release to `~/.local/bin/agiler`. Override with `AGILER_VERSION=v0.1.2` or `AGILER_INSTALL_DIR=/usr/local/bin` (prefix the env vars before the pipeline, e.g. `curl ... | AGILER_VERSION=v0.1.2 sh`). Script verifies the SHA-256 checksum before installing.
+Installs the latest release to `~/.local/bin/agiler`. Override with `AGILER_VERSION=v1.1.0` or `AGILER_INSTALL_DIR=/usr/local/bin` (prefix the env vars before the pipeline, e.g. `curl ... | AGILER_VERSION=v1.1.0 sh`). Script verifies the SHA-256 checksum before installing.
 
 **From source:**
 
@@ -31,7 +31,7 @@ go install github.com/agilercloud/cli/cmd/agiler@latest
 ```sh
 agiler upgrade              # install the latest release
 agiler upgrade --check      # report current vs. latest, no changes
-agiler upgrade --version v0.1.2   # install a specific tag (supports downgrade)
+agiler upgrade --version v1.1.0   # install a specific tag (supports downgrade)
 agiler upgrade --force      # override refusals (dev build, non-canonical path, same version)
 ```
 
@@ -76,7 +76,7 @@ Environment variables `AGILER_API_KEY`, `AGILER_API_BASE`, `AGILER_WORKSPACE_ID`
 
 Set `AGILER_NO_UPDATE_CHECK=1` to suppress the once-per-day background "newer version available" notification.
 
-Project-scoped commands (`logs`, `sql`, `files`, `backups`, `variables`, `domains`, `rules`, `usage`) target the project resolved from `--project`, `AGILER_PROJECT_ID`, or `project_id` in config. Setting it once in config means you don't repeat the project ID on every command.
+Project-scoped commands (`logs`, `sql`, `wp`, `files`, `backups`, `variables`, `domains`, `rules`, `usage`) target the project resolved from `--project`, `AGILER_PROJECT_ID`, or `project_id` in config. Setting it once in config means you don't repeat the project ID on every command.
 
 Run `agiler config show` to see the resolved config and which source each value came from.
 
@@ -93,6 +93,7 @@ agiler variables           Manage environment variables
 agiler domains             Manage custom domains
 agiler rules               Manage project rules (templates at 'rules templates options')
 agiler usage               Project resource usage
+agiler wp                  Execute wp-cli commands and inspect prior runs
 ```
 
 **Resources:**
@@ -134,7 +135,7 @@ Run `agiler <command> --help` for details on any subcommand.
 
 Text output uses subtle ANSI color when stdout (or stderr, for error messages) is a terminal: red error prefixes, bold table headers, dim detail-view labels, and green/yellow status badges. Color is auto-disabled when output is piped or redirected, when the `NO_COLOR` environment variable is set, when `--no-color` is passed, or when `--quiet` is used. Structured formats (`--format=json|yaml|csv|tsv`) are always plaintext.
 
-Pass `--progress` to `backups download`, `files get`, or `billing statement` for a streaming progress indicator on stderr. Auto-suppressed when stderr is piped or when writing to stdout.
+Pass `--progress` to `backups download database`, `backups download storage`, `files get`, `files upload`, or `billing statement` for a streaming progress indicator on stderr. For `files get` and `files upload` it applies to single-file transfers only. Auto-suppressed when stderr is piped, when writing to stdout, and whenever color is off (`--no-color`, `NO_COLOR`, or `--quiet`).
 
 ## Debugging
 
