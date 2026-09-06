@@ -50,7 +50,7 @@ func newRulesCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "create [json-file]",
 		Short: "Create a project rule (reads JSON from file or stdin)",
-		Long:  "Create a project rule from a JSON definition. The JSON can be passed as a file path or piped via stdin. Browse the platform rule catalog with agiler rules templates options to see the available conditions and actions.",
+		Long:  "Create a project rule from a JSON definition. The JSON can be passed as a file path or piped via stdin. Browse the platform rule catalog with agiler rules templates options to see the available conditions, actions, and templates. When using a template, read its description, copy its suggested priority, and set active to false while requires_configuration is true and site-specific values remain unresolved. description and requires_configuration are catalog metadata, not create fields.",
 		Example: `  agiler rules create ./rule.json
   cat rule.json | agiler rules create`,
 		Args: cobra.RangeArgs(0, 1),
@@ -154,6 +154,7 @@ func newRuleTemplatesCmd(a *app.App) *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "options",
 		Short: "List available rule conditions, actions, and templates",
+		Long:  "List available rule conditions, actions, and templates as JSON. Templates may include description, requires_configuration, and a suggested priority (lower values run first). Read the description and replace site-specific values before enabling a template that requires configuration. Create an inactive rule with active: false while configuration is incomplete. Copy name, conditions, actions, and priority into the rule definition; description and requires_configuration are catalog metadata only.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			result, err := a.API.ListRuleOptions(cmd.Context())

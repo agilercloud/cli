@@ -403,9 +403,16 @@ type RuleStatement struct {
 
 // RuleTemplateOutput defines model for RuleTemplateOutput.
 type RuleTemplateOutput struct {
-	Actions    []RuleStatement            `json:"actions"`
-	Conditions map[string][]RuleStatement `json:"conditions"`
-	Name       string                     `json:"name"`
+	Actions     []RuleStatement            `json:"actions"`
+	Conditions  map[string][]RuleStatement `json:"conditions"`
+	Description *string                    `json:"description,omitempty"`
+	Name        string                     `json:"name"`
+
+	// Priority Suggested execution priority; lower numbers run first.
+	Priority *int `json:"priority,omitempty"`
+
+	// RequiresConfiguration Create an inactive copy and review site-specific values before enabling this template.
+	RequiresConfiguration *bool `json:"requires_configuration,omitempty"`
 }
 
 // RuntimeOutput defines model for RuntimeOutput.
