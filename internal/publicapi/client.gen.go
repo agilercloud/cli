@@ -338,10 +338,8 @@ type ProjectVariableOutput struct {
 
 // RegionOutput defines model for RegionOutput.
 type RegionOutput struct {
-	CreatedAt   time.Time `json:"created_at"`
-	Description string    `json:"description"`
-	Id          string    `json:"id"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	Description string `json:"description"`
+	Id          string `json:"id"`
 }
 
 // RuleActionOption defines model for RuleActionOption.

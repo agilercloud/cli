@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"time"
 
 	"github.com/agilercloud/cli/internal/api"
 	"github.com/agilercloud/cli/internal/app"
@@ -46,7 +45,5 @@ func renderRegionDetail(w *output.Writer, r api.Region) error {
 	}
 	w.Text("%s %s", w.OutColor.Dim("ID:         "), r.Id)
 	w.Text("%s %s", w.OutColor.Dim("Description:"), r.Description)
-	w.Text("%s %s", w.OutColor.Dim("Created:    "), r.CreatedAt.Format(time.RFC3339))
-	w.Text("%s %s", w.OutColor.Dim("Updated:    "), r.UpdatedAt.Format(time.RFC3339))
 	return nil
 }
