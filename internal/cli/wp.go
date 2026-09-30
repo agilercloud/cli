@@ -68,7 +68,7 @@ func newWPExecuteCmd(a *app.App) *cobra.Command {
 	cmd.Flags().IntVar(&timeout, "timeout", 0, "Per-command timeout in seconds (server-side)")
 	cmd.Flags().BoolVar(&async, "async", false, "Submit without waiting; prints the pending command for later `agiler wp get`")
 	cmd.Flags().DurationVar(&pollInterval, "poll-interval", time.Second, "Poll interval while waiting for wp-cli completion")
-	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 10*time.Minute, "Maximum wait for wp-cli completion")
+	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 15*time.Minute, "Maximum wait for wp-cli completion")
 	return cmd
 }
 

@@ -73,7 +73,7 @@ func newSQLExecuteCmd(a *app.App) *cobra.Command {
 	cmd.Flags().IntVar(&timeout, "timeout", 0, "Per-statement timeout in seconds (server-side)")
 	cmd.Flags().BoolVar(&async, "async", false, "Submit without waiting; prints the pending statement for later `agiler sql get`")
 	cmd.Flags().DurationVar(&pollInterval, "poll-interval", time.Second, "Poll interval while waiting for SQL completion")
-	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 10*time.Minute, "Maximum wait for SQL completion")
+	cmd.Flags().DurationVar(&pollTimeout, "poll-timeout", 15*time.Minute, "Maximum wait for SQL completion")
 	return cmd
 }
 
