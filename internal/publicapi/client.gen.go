@@ -22,6 +22,63 @@ const (
 	ApiKeyAuthScopes apiKeyAuthContextKey = "apiKeyAuth.Scopes"
 )
 
+// Defines values for ProjectDomainOutputStatus.
+const (
+	Checking ProjectDomainOutputStatus = "checking"
+	Error    ProjectDomainOutputStatus = "error"
+	Ok       ProjectDomainOutputStatus = "ok"
+	Pending  ProjectDomainOutputStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the ProjectDomainOutputStatus enum.
+func (e ProjectDomainOutputStatus) Valid() bool {
+	switch e {
+	case Checking:
+		return true
+	case Error:
+		return true
+	case Ok:
+		return true
+	case Pending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequiredDNSRecordPurpose.
+const (
+	CertificateValidation RequiredDNSRecordPurpose = "certificate_validation"
+	Traffic               RequiredDNSRecordPurpose = "traffic"
+)
+
+// Valid indicates whether the value is a known member of the RequiredDNSRecordPurpose enum.
+func (e RequiredDNSRecordPurpose) Valid() bool {
+	switch e {
+	case CertificateValidation:
+		return true
+	case Traffic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequiredDNSRecordType.
+const (
+	CNAME RequiredDNSRecordType = "CNAME"
+)
+
+// Valid indicates whether the value is a known member of the RequiredDNSRecordType enum.
+func (e RequiredDNSRecordType) Valid() bool {
+	switch e {
+	case CNAME:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetProjectUsageParamsGranularity.
 const (
 	Day   GetProjectUsageParamsGranularity = "day"
@@ -91,8 +148,11 @@ type BinaryStream = openapi_types.File
 
 // CreateProjectDomainInput defines model for CreateProjectDomainInput.
 type CreateProjectDomainInput struct {
-	Name    string `json:"name"`
-	Primary *bool  `json:"primary,omitempty"`
+	// Name Exact FQDN or wildcard in the single supported form *.<valid-fqdn>.
+	Name string `json:"name"`
+
+	// Primary Promote an exact domain to the project site domain. Wildcard domains cannot be primary.
+	Primary *bool `json:"primary,omitempty"`
 }
 
 // CreateProjectInput defines model for CreateProjectInput.
@@ -238,11 +298,19 @@ type ProjectDetail struct {
 
 // ProjectDomainOutput defines model for ProjectDomainOutput.
 type ProjectDomainOutput struct {
-	CreatedAt time.Time          `json:"created_at"`
-	Id        openapi_types.UUID `json:"id"`
-	Name      string             `json:"name"`
-	Primary   bool               `json:"primary"`
+	CheckedAt          *time.Time                `json:"checked_at,omitempty"`
+	CreatedAt          time.Time                 `json:"created_at"`
+	ErrorCode          *string                   `json:"error_code,omitempty"`
+	ErrorMessage       *string                   `json:"error_message,omitempty"`
+	Id                 openapi_types.UUID        `json:"id"`
+	Name               string                    `json:"name"`
+	Primary            bool                      `json:"primary"`
+	RequiredDnsRecords []RequiredDNSRecord       `json:"required_dns_records"`
+	Status             ProjectDomainOutputStatus `json:"status"`
 }
+
+// ProjectDomainOutputStatus defines model for ProjectDomainOutput.Status.
+type ProjectDomainOutputStatus string
 
 // ProjectFileEntry defines model for ProjectFileEntry.
 type ProjectFileEntry struct {
@@ -342,6 +410,20 @@ type RegionOutput struct {
 	Id          string `json:"id"`
 }
 
+// RequiredDNSRecord defines model for RequiredDNSRecord.
+type RequiredDNSRecord struct {
+	Name    string                   `json:"name"`
+	Purpose RequiredDNSRecordPurpose `json:"purpose"`
+	Type    RequiredDNSRecordType    `json:"type"`
+	Value   string                   `json:"value"`
+}
+
+// RequiredDNSRecordPurpose defines model for RequiredDNSRecord.Purpose.
+type RequiredDNSRecordPurpose string
+
+// RequiredDNSRecordType defines model for RequiredDNSRecord.Type.
+type RequiredDNSRecordType string
+
 // RuleActionOption defines model for RuleActionOption.
 type RuleActionOption struct {
 	// AllowedValues Domain of allowed values when this action takes one. Omitted for terminal actions that take no value (e.g. "end").
@@ -359,7 +441,7 @@ type RuleActionOption struct {
 
 // RuleCatalogNotes defines model for RuleCatalogNotes.
 type RuleCatalogNotes struct {
-	// ConditionsShape How to build the conditions object: a JSON object containing one or more of 'all' (AND), 'any' (OR), or 'not' (negated AND). Each maps to an array of statements.
+	// ConditionsShape How to build the conditions object: a JSON object containing one or more of 'all' (AND), 'any' (OR), or 'not' (negated AND). Each maps to an array of statements. Exactly {'all':[]} means match every request.
 	ConditionsShape string `json:"conditions_shape"`
 
 	// StatementShape How to build a single rule statement from a catalog entry: copy fact/operator from the entry, then supply a single string 'value' (NOT 'values') chosen from the entry's 'allowed_values' domain.
@@ -457,6 +539,7 @@ type UpdateProjectBackupPolicyInput struct {
 
 // UpdateProjectDomainInput defines model for UpdateProjectDomainInput.
 type UpdateProjectDomainInput struct {
+	// Primary Promote an exact domain to the project site domain. Wildcard domains cannot be primary.
 	Primary *bool `json:"primary,omitempty"`
 }
 
@@ -625,6 +708,12 @@ type DeleteProjectDomainParams struct {
 
 // UpdateProjectDomainParams defines parameters for UpdateProjectDomain.
 type UpdateProjectDomainParams struct {
+	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
+	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
+}
+
+// RecheckProjectDomainParams defines parameters for RecheckProjectDomain.
+type RecheckProjectDomainParams struct {
 	// IdempotencyKey Opaque client-supplied retry token (any string up to 128 chars; UUIDs work well). If the server has seen this key on a prior request with the same body, it replays the recorded response. A different body under the same key returns 409.
 	IdempotencyKey *string `json:"Idempotency-Key,omitempty"`
 }
@@ -1045,6 +1134,9 @@ type ClientInterface interface {
 
 	UpdateProjectDomain(ctx context.Context, project string, domain string, params *UpdateProjectDomainParams, body UpdateProjectDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// RecheckProjectDomain request
+	RecheckProjectDomain(ctx context.Context, project string, domain string, params *RecheckProjectDomainParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListProjectFiles request
 	ListProjectFiles(ctx context.Context, project string, params *ListProjectFilesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1442,6 +1534,18 @@ func (c *Client) UpdateProjectDomainWithBody(ctx context.Context, project string
 
 func (c *Client) UpdateProjectDomain(ctx context.Context, project string, domain string, params *UpdateProjectDomainParams, body UpdateProjectDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateProjectDomainRequest(c.Server, project, domain, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RecheckProjectDomain(ctx context.Context, project string, domain string, params *RecheckProjectDomainParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRecheckProjectDomainRequest(c.Server, project, domain, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3010,6 +3114,62 @@ func NewUpdateProjectDomainRequestWithBody(server string, project string, domain
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.IdempotencyKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", *params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("Idempotency-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
+// NewRecheckProjectDomainRequest generates requests for RecheckProjectDomain
+func NewRecheckProjectDomainRequest(server string, project string, domain string, params *RecheckProjectDomainParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "project", project, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "domain", domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/projects/%s/domains/%s/recheck", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	if params != nil {
 
@@ -5534,6 +5694,9 @@ type ClientWithResponsesInterface interface {
 
 	UpdateProjectDomainWithResponse(ctx context.Context, project string, domain string, params *UpdateProjectDomainParams, body UpdateProjectDomainJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateProjectDomainResponse, error)
 
+	// RecheckProjectDomainWithResponse request
+	RecheckProjectDomainWithResponse(ctx context.Context, project string, domain string, params *RecheckProjectDomainParams, reqEditors ...RequestEditorFn) (*RecheckProjectDomainResponse, error)
+
 	// ListProjectFilesWithResponse request
 	ListProjectFilesWithResponse(ctx context.Context, project string, params *ListProjectFilesParams, reqEditors ...RequestEditorFn) (*ListProjectFilesResponse, error)
 
@@ -6295,6 +6458,43 @@ func (r UpdateProjectDomainResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdateProjectDomainResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type RecheckProjectDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *ProjectDomainOutput
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON409      *ErrorResponse
+	JSON429      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r RecheckProjectDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RecheckProjectDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RecheckProjectDomainResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -8016,6 +8216,15 @@ func (c *ClientWithResponses) UpdateProjectDomainWithResponse(ctx context.Contex
 	return ParseUpdateProjectDomainResponse(rsp)
 }
 
+// RecheckProjectDomainWithResponse request returning *RecheckProjectDomainResponse
+func (c *ClientWithResponses) RecheckProjectDomainWithResponse(ctx context.Context, project string, domain string, params *RecheckProjectDomainParams, reqEditors ...RequestEditorFn) (*RecheckProjectDomainResponse, error) {
+	rsp, err := c.RecheckProjectDomain(ctx, project, domain, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRecheckProjectDomainResponse(rsp)
+}
+
 // ListProjectFilesWithResponse request returning *ListProjectFilesResponse
 func (c *ClientWithResponses) ListProjectFilesWithResponse(ctx context.Context, project string, params *ListProjectFilesParams, reqEditors ...RequestEditorFn) (*ListProjectFilesResponse, error) {
 	rsp, err := c.ListProjectFiles(ctx, project, params, reqEditors...)
@@ -9678,6 +9887,81 @@ func ParseUpdateProjectDomainResponse(rsp *http.Response) (*UpdateProjectDomainR
 			return nil, err
 		}
 		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON429 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseRecheckProjectDomainResponse parses an HTTP response from a RecheckProjectDomainWithResponse call
+func ParseRecheckProjectDomainResponse(rsp *http.Response) (*RecheckProjectDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RecheckProjectDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest ProjectDomainOutput
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 429:
 		var dest ErrorResponse
