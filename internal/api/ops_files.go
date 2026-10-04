@@ -16,9 +16,7 @@ import (
 // values that match the canonical /v1/projects/{id}/files/{path} URI
 // encoding.
 //
-// The generated client treats the whole `{path}` parameter as a single
-// segment, which would double-escape slashes — so the wrappers below
-// hand it a pre-encoded string.
+// Generated client methods receive raw paths and perform their own escaping.
 func EncodeFilePath(p string) string {
 	p = strings.TrimPrefix(p, "/")
 	segs := strings.Split(p, "/")
@@ -42,7 +40,7 @@ func (c *Client) ListProjectFiles(ctx context.Context, projectID, remotePath str
 		})
 	}
 	return paginateAll(func(cursor *string) ([]File, http.Header, error) {
-		resp, err := c.impl.GetProjectFileWithResponse(ctx, projectID, EncodeFilePath(remotePath), &publicapi.GetProjectFileParams{Cursor: cursor})
+		resp, err := c.impl.GetProjectFileWithResponse(ctx, projectID, strings.TrimPrefix(remotePath, "/"), &publicapi.GetProjectFileParams{Cursor: cursor})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -88,7 +86,7 @@ func (c *Client) PutProjectFile(ctx context.Context, projectID, remotePath, cont
 		})
 	}
 	resp, err := c.impl.PutProjectFileWithBodyWithResponse(
-		ctx, projectID, EncodeFilePath(remotePath), params, contentType, body, editors...,
+		ctx, projectID, strings.TrimPrefix(remotePath, "/"), params, contentType, body, editors...,
 	)
 	if err != nil {
 		return err
@@ -99,7 +97,7 @@ func (c *Client) PutProjectFile(ctx context.Context, projectID, remotePath, cont
 // DeleteProjectFile removes a file or directory.
 func (c *Client) DeleteProjectFile(ctx context.Context, projectID, remotePath string) error {
 	resp, err := c.impl.DeleteProjectFileWithResponse(
-		ctx, projectID, EncodeFilePath(remotePath), &publicapi.DeleteProjectFileParams{},
+		ctx, projectID, strings.TrimPrefix(remotePath, "/"), &publicapi.DeleteProjectFileParams{},
 	)
 	if err != nil {
 		return err
