@@ -120,6 +120,14 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 			var in api.UpdateProjectInput
 			touched := false
 
+			if cmd.Flags().Changed("timeout") {
+				v, _ := cmd.Flags().GetInt("timeout")
+				if v < 1 || v > 180 {
+					return fmt.Errorf("--timeout must be between 1 and 180 seconds")
+				}
+				in.Timeout = &v
+				touched = true
+			}
 			if cmd.Flags().Changed("name") {
 				v, _ := cmd.Flags().GetString("name")
 				in.Name = &v
@@ -149,7 +157,7 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 			}
 
 			if !touched {
-				return fmt.Errorf("no flags provided; use --name, --active, --runtime, or --target-workspace")
+				return fmt.Errorf("no flags provided; use --name, --active, --runtime, --timeout, or --target-workspace")
 			}
 
 			result, err := a.API.UpdateProject(cmd.Context(), args[0], in)
@@ -159,6 +167,7 @@ func newProjectsUpdateCmd(a *app.App) *cobra.Command {
 			return renderProjectDetail(a.Output, *result)
 		},
 	}
+	cmd.Flags().Int("timeout", 0, "HTTP worker timeout in seconds (1–180; default 30). Internal and WordPress logged-in/admin/cron requests use 180 seconds")
 	cmd.Flags().String("name", "", "Project name")
 	cmd.Flags().Bool("active", false, "Active state")
 	cmd.Flags().String("runtime", "", "Runtime ID")
@@ -477,6 +486,7 @@ func renderProjectDetail(w *output.Writer, p api.ProjectDetail) error {
 	w.Text("%s %s", w.OutColor.Dim("Active:   "), output.YesNo(p.Active))
 	w.Text("%s %s", w.OutColor.Dim("Region:   "), p.Region)
 	w.Text("%s %s", w.OutColor.Dim("Runtime:  "), p.Runtime)
+	w.Text("%s %d seconds", w.OutColor.Dim("Timeout:  "), p.Timeout)
 	w.Text("%s %s", w.OutColor.Dim("Workspace:"), p.WorkspaceId)
 	w.Text("%s %s", w.OutColor.Dim("Created:  "), p.CreatedAt.Format(time.RFC3339))
 	w.Text("%s %s", w.OutColor.Dim("Updated:  "), p.UpdatedAt.Format(time.RFC3339))

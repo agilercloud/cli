@@ -285,13 +285,19 @@ type ProjectBackupPolicyOutput struct {
 
 // ProjectDetail defines model for ProjectDetail.
 type ProjectDetail struct {
-	Active      bool               `json:"active"`
-	CreatedAt   time.Time          `json:"created_at"`
-	Id          openapi_types.UUID `json:"id"`
-	Name        string             `json:"name"`
-	Region      string             `json:"region"`
-	Runtime     string             `json:"runtime"`
-	Status      string             `json:"status"`
+	Active    bool               `json:"active"`
+	CreatedAt time.Time          `json:"created_at"`
+	Id        openapi_types.UUID `json:"id"`
+
+	// MaxConcurrency Maximum concurrent PHP workers. This setting cannot be changed through the API.
+	MaxConcurrency *int   `json:"max_concurrency,omitempty"`
+	Name           string `json:"name"`
+	Region         string `json:"region"`
+	Runtime        string `json:"runtime"`
+	Status         string `json:"status"`
+
+	// Timeout HTTP worker timeout in seconds (default 30). WordPress login-cookie, admin-path, cron and internal operations use the maximum of 180 seconds.
+	Timeout     int                `json:"timeout"`
 	UpdatedAt   time.Time          `json:"updated_at"`
 	WorkspaceId openapi_types.UUID `json:"workspace_id"`
 }
@@ -545,9 +551,12 @@ type UpdateProjectDomainInput struct {
 
 // UpdateProjectInput defines model for UpdateProjectInput.
 type UpdateProjectInput struct {
-	Active      *bool   `json:"active,omitempty"`
-	Name        *string `json:"name,omitempty"`
-	Runtime     *string `json:"runtime,omitempty"`
+	Active  *bool   `json:"active,omitempty"`
+	Name    *string `json:"name,omitempty"`
+	Runtime *string `json:"runtime,omitempty"`
+
+	// Timeout HTTP worker timeout in whole seconds (1–180).
+	Timeout     *int    `json:"timeout,omitempty"`
 	WorkspaceId *string `json:"workspace_id,omitempty"`
 }
 

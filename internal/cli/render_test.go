@@ -143,6 +143,7 @@ func TestRenderProjectsList(t *testing.T) {
 
 func TestRenderProjectDetail(t *testing.T) {
 	data := api.ProjectDetail{
+		Timeout:     30,
 		Id:          testID1,
 		Name:        "alpha",
 		Status:      "running",
