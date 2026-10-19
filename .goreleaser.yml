@@ -68,12 +68,13 @@ homebrew_casks:
       name: agilerbot
       email: hello@agiler.io
     commit_msg_template: "agiler {{ .Tag }}"
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/agiler"]
-          end
+    # Use the declarative DSL until GoReleaser's native install_steps support ships.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ "{{staged_path}}" }}/agiler"]
+        end
+      end
 
 release:
   github:
