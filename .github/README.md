@@ -1,5 +1,21 @@
 # Workflow maintenance
 
+## Dependency updates
+
+[`dependabot.yml`](dependabot.yml) checks Actions and the root Go module weekly
+against the repository's default branch. Each entry groups minor/patch updates
+separately and leaves majors as individual PRs. Version updates wait until
+releases are at least seven days old, with the default limit of five open
+version-update PRs per entry. Maintainers review PRs and CI results before
+merging; there is no automerge.
+
+GitHub discovers this configuration from the default branch, so it must reach
+that branch before proposals begin. Security updates, if enabled in repository
+settings, also target the default branch and bypass the version-update cooldown.
+Maintainers monitor Dependabot failures and CI during dependency review;
+unattended PRs leave older dependencies in use. This uses existing Dependabot
+and Actions runner capacity without an external service.
+
 ## Release tool
 
 `workflows/release.yml` pins the GoReleaser Linux x86-64 release archive by
@@ -37,7 +53,7 @@ reviewed bytes, not proof that upstream code is free of defects.
 
 Repository maintainers own manual review of GoReleaser releases during weekly
 dependency review and promptly on security advisories. Dependabot updates
-Actions, not this binary pin. Choose an explicit compatible release, download its
+Actions and Go modules, not this binary pin. Choose an explicit compatible release, download its
 archive and checksums without executing it, independently calculate SHA-256,
 compare the checksum and GitHub asset digest, and verify its attestation against
 the expected tagged workflow and source commit as above. Review upstream changes,
