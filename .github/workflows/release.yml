@@ -26,11 +26,30 @@ jobs:
           check-latest: true
           cache: true
 
-      - uses: goreleaser/goreleaser-action@v7.3.0
-        with:
-          distribution: goreleaser
-          version: "~> v2"
-          args: release --clean
+      - name: Install verified GoReleaser
+        shell: bash
+        env:
+          TOOL_VERSION: '2.18.2'
+          TOOL_SHA256: '0a96edc9d9bc594e4a41cc4d59467c182062910ab24d9d1f6dd7b667d32606d3'
+        run: |
+          set -euo pipefail
+          [[ "$RUNNER_OS/$RUNNER_ARCH" == Linux/X64 ]] || { echo "Unsupported runner" >&2; exit 1; }
+          [[ "$TOOL_SHA256" =~ ^[0-9a-f]{64}$ ]] || { echo "Invalid archive digest" >&2; exit 1; }
+          directory=$(mktemp -d "$RUNNER_TEMP/goreleaser.XXXXXX")
+          trap 'rm -f "$directory/archive.tar.gz"' EXIT
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --connect-timeout 15 --max-time 120 \
+            "https://github.com/goreleaser/goreleaser/releases/download/v${TOOL_VERSION}/goreleaser_Linux_x86_64.tar.gz" \
+            --output "$directory/archive.tar.gz"
+          printf '%s  %s\n' "$TOOL_SHA256" "$directory/archive.tar.gz" | sha256sum -c /dev/stdin
+          tar -xzf "$directory/archive.tar.gz" -C "$directory" goreleaser
+          test -f "$directory/goreleaser"
+          test ! -L "$directory/goreleaser"
+          chmod 0755 "$directory/goreleaser"
+          printf '%s\n' "$directory" >> "$GITHUB_PATH"
+
+      - name: Release
+        run: goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
